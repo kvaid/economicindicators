@@ -1,81 +1,86 @@
 """
-Download Unemployment Rate (U-3) data from FRED (BLS source)
-and save to unemployment.csv.
+Incrementally download unemployment data from FRED and save to unemployment.csv.
 """
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-def download_unemployment_data():
-    """Download U-3 Unemployment Rate and Natural Rate of Unemployment."""
-    
-    base_url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
-    start_date = '1990-01-01'
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    
-    print("Downloading Unemployment Data...")
-    
-    try:
-        # 1. Download UNRATE (Monthly)
-        print("  Fetching UNRATE (U-3)...")
-        url_unrate = f"{base_url}?id=UNRATE&cosd={start_date}&coed={end_date}"
-        df_unrate = pd.read_csv(url_unrate)
-        df_unrate['observation_date'] = pd.to_datetime(df_unrate['observation_date'])
-        df_unrate = df_unrate.rename(columns={'observation_date': 'date', 'UNRATE': 'UNRATE'}).set_index('date')
-        
-        # 2. Download NROU (Natural Rate of Unemployment - Quarterly)
-        print("  Fetching NROU (Natural Rate)...")
-        url_nrou = f"{base_url}?id=NROU&cosd={start_date}&coed={end_date}"
-        df_nrou = pd.read_csv(url_nrou)
-        df_nrou['observation_date'] = pd.to_datetime(df_nrou['observation_date'])
-        df_nrou = df_nrou.rename(columns={'observation_date': 'date', 'NROU': 'NROU'}).set_index('date')
-        
-        # 3. Combine and Resample
-        # NROU is quarterly, so we join it to the monthly UNRATE and forward fill the NROU values
-        # to apply the quarterly estimate to each month in that quarter.
-        
-        # Merge on index (date)
-        # using 'left' join to keep UNRATE's monthly timeline
-        df_combined = df_unrate.join(df_nrou, how='outer') # Outer to catch everything first
-        
-        # Resample to daily to fill gaps if any, then back to monthly?
-        # Actually, simpler: just forward fill NROU.
-        df_combined['NROU'] = df_combined['NROU'].ffill()
-        
-        # Filter back to just the months we have UNRATE for, or resample to MS (Month Start)
-        df_combined = df_combined.resample('MS').first() # Take the first value (which is the data value)
-        
-        # Reset index to make date a column
-        df_combined = df_combined.reset_index()
-        
-        # Ensure we filter to our start date again just in case
-        df_combined = df_combined[df_combined['date'] >= start_date]
+import pandas as pd
 
-        # Convert cols to numeric
-        df_combined['UNRATE'] = pd.to_numeric(df_combined['UNRATE'], errors='coerce')
-        df_combined['NROU'] = pd.to_numeric(df_combined['NROU'], errors='coerce')
-        
-        print(f"  OK Combined {len(df_combined)} records")
-        
-        return df_combined[['date', 'UNRATE', 'NROU']]
-        
-    except Exception as e:
-        print(f"  ERROR downloading data: {e}")
+OUTPUT_FILE = Path(__file__).resolve().parent / "unemployment.csv"
+
+
+def load_existing() -> pd.DataFrame:
+    if not OUTPUT_FILE.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(OUTPUT_FILE, parse_dates=["date"])
+        return df.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    except Exception:
+        return pd.DataFrame()
+
+
+def _download_series(base_url: str, series_id: str, fetch_start: str, fetch_end: str) -> pd.DataFrame:
+    url = f"{base_url}?id={series_id}&cosd={fetch_start}&coed={fetch_end}"
+    df = pd.read_csv(url)
+    df["observation_date"] = pd.to_datetime(df["observation_date"])
+    return df.rename(columns={"observation_date": "date", series_id: series_id}).set_index("date")
+
+
+def download_unemployment_data() -> pd.DataFrame | None:
+    base_url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+    fetch_end = datetime.now().strftime("%Y-%m-%d")
+    existing = load_existing()
+
+    if existing.empty:
+        fetch_start = "1990-01-01"
+        print("Full mode: no existing unemployment.csv found.")
+    else:
+        last_date = existing["date"].max()
+        # Overlap protects quarterly NROU forward-fill transitions.
+        fetch_start = (last_date - pd.DateOffset(months=18)).strftime("%Y-%m-%d")
+        print(f"Incremental mode: last saved date {last_date.date()}, fetch start {fetch_start}")
+
+    try:
+        print("Fetching UNRATE, U6RATE, and NROU...")
+        unrate = _download_series(base_url, "UNRATE", fetch_start, fetch_end)
+        u6rate = _download_series(base_url, "U6RATE", fetch_start, fetch_end)
+        nrou = _download_series(base_url, "NROU", fetch_start, fetch_end)
+
+        combined = unrate.join(u6rate, how="outer").join(nrou, how="outer").sort_index()
+        for col in ["UNRATE", "U6RATE", "NROU"]:
+            combined[col] = pd.to_numeric(combined[col], errors="coerce")
+
+        # Keep one monthly row and then forward-fill NROU across months.
+        combined = combined.resample("MS").last()
+        combined["NROU"] = combined["NROU"].ffill()
+        combined = combined.reset_index()
+        combined = combined[combined["date"] >= "1990-01-01"]
+
+        new_slice = combined[["date", "UNRATE", "U6RATE", "NROU"]]
+        if not existing.empty:
+            existing_idx = (
+                existing[["date", "UNRATE", "U6RATE", "NROU"]]
+                .drop_duplicates(subset=["date"], keep="last")
+                .set_index("date")
+            )
+            new_idx = new_slice.drop_duplicates(subset=["date"], keep="last").set_index("date")
+            # Prefer fresh non-null values, but keep existing values where new data is null.
+            merged = new_idx.combine_first(existing_idx).sort_index().reset_index()
+            return merged[["date", "UNRATE", "U6RATE", "NROU"]].reset_index(drop=True)
+        return new_slice.reset_index(drop=True)
+    except Exception as exc:
+        print(f"ERROR downloading data: {exc}")
         return None
 
+
 if __name__ == "__main__":
-    print("Downloading Unemployment Rate Data from FRED...\n")
-    
+    print("Downloading Unemployment Data from FRED...\n")
+    before_rows = len(load_existing())
     df = download_unemployment_data()
-    
+
     if df is not None:
-        output_file = Path(__file__).resolve().parent / "unemployment.csv"
-        df.to_csv(output_file, index=False)
-        print(f"\nOK Data saved to {output_file}")
-        
-        print("\nData preview:")
-        print(df.head())
-        print("...")
-        print(df.tail())
+        df.to_csv(OUTPUT_FILE, index=False)
+        print(f"\nOK Data saved to {OUTPUT_FILE}")
+        print(f"Rows added/updated: {len(df) - before_rows}")
     else:
         print("\nERROR Failed to download data")

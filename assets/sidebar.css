@@ -45,7 +45,7 @@ body {
 }
 
 .sidebar-title {
-  margin: 0;
+  margin: 0 0 10px 0;
   font-size: 1.35rem;
   letter-spacing: 0.01em;
 }
@@ -80,6 +80,12 @@ body {
   color: var(--text-muted);
 }
 
+.refresh-progress-bar {
+  width: 100%;
+  height: 8px;
+  margin-top: 6px;
+}
+
 .divider {
   border: 0;
   border-top: 1px solid var(--border);
@@ -96,8 +102,8 @@ body {
 }
 
 .control-group {
-  margin: 0 0 8px 0;
-  padding: 8px 10px;
+  margin: 0 0 6px 0;
+  padding: 7px 6px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fff;
@@ -109,6 +115,14 @@ body {
   gap: 8px;
   line-height: 1.35;
   color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.control-group input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
 }
 
 .maturity-grid {
@@ -159,8 +173,9 @@ body {
 }
 
 .date-range .DateInput_input {
-  font-size: 13px;
-  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 7px;
 }
 
 .timeline-slider {
@@ -240,6 +255,36 @@ body {
   box-shadow: 0 8px 20px rgba(12, 41, 66, 0.06);
 }
 
+.latest-indicators {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.indicator-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 7px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 2px 8px rgba(12, 41, 66, 0.08);
+}
+
+.indicator-label {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.indicator-value {
+  margin-top: 1px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.15;
+}
+
 @media (max-width: 980px) {
   .sidebar {
     position: static;
@@ -253,5 +298,9 @@ body {
   .main-content {
     margin-left: 0;
     padding: 16px;
+  }
+
+  .latest-indicators {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

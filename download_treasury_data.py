@@ -1,110 +1,102 @@
 """
-Download US Treasury yield data from FRED (Federal Reserve Economic Data)
-and save to ust.csv in the required format.
+Incrementally download US Treasury yield data from FRED and save to ust.csv.
 """
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-# FRED series IDs for Treasury Constant Maturity rates
-# Using daily series and will resample to weekly
+import pandas as pd
+
 SERIES_IDS = {
-    'BC_1YEAR': 'DGS1',    # 1-Year Treasury Constant Maturity Rate
-    'BC_2YEAR': 'DGS2',    # 2-Year Treasury Constant Maturity Rate
-    'BC_5YEAR': 'DGS5',    # 5-Year Treasury Constant Maturity Rate
-    'BC_10YEAR': 'DGS10',  # 10-Year Treasury Constant Maturity Rate
-    'BC_30YEAR': 'DGS30',  # 30-Year Treasury Constant Maturity Rate
+    "BC_1YEAR": "DGS1",
+    "BC_2YEAR": "DGS2",
+    "BC_5YEAR": "DGS5",
+    "BC_10YEAR": "DGS10",
+    "BC_30YEAR": "DGS30",
 }
 
-def download_treasury_data():
-    """Download Treasury yield data from FRED."""
-    
-    # FRED provides CSV downloads directly without API key for public data
+OUTPUT_FILE = Path(__file__).resolve().parent / "ust.csv"
+
+
+def load_existing() -> pd.DataFrame:
+    if not OUTPUT_FILE.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(OUTPUT_FILE, parse_dates=["date"])
+        return df.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    except Exception:
+        return pd.DataFrame()
+
+
+def enforce_daily_timeline(df: pd.DataFrame, date_col: str = "date") -> pd.DataFrame:
+    if df.empty:
+        return df
+    value_cols = [c for c in df.columns if c != date_col]
+    out = df.set_index(date_col).sort_index()
+    full_index = pd.date_range(start=out.index.min(), end=out.index.max(), freq="D")
+    out = out.reindex(full_index)
+    out.index.name = date_col
+    out[value_cols] = out[value_cols].ffill()
+    return out.reset_index()
+
+
+def download_treasury_data() -> pd.DataFrame | None:
     base_url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
-    
-    all_data = []
-    
+    existing = load_existing()
+
+    if existing.empty:
+        fetch_start = "1990-01-01"
+        print("Full mode: no existing ust.csv found.")
+    else:
+        last_date = existing["date"].max()
+        fetch_start = (last_date - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        print(f"Incremental mode: last saved date {last_date.date()}, fetch start {fetch_start}")
+
+    fetch_end = datetime.now().strftime("%Y-%m-%d")
+    all_data: list[pd.DataFrame] = []
+
     for col_name, series_id in SERIES_IDS.items():
         print(f"Downloading {col_name} ({series_id})...")
-        
-        # Construct URL for CSV download
-        url = f"{base_url}?id={series_id}&cosd=1990-01-01&coed={datetime.now().strftime('%Y-%m-%d')}"
-        
+        url = f"{base_url}?id={series_id}&cosd={fetch_start}&coed={fetch_end}"
         try:
-            # Read the CSV directly from FRED
             df = pd.read_csv(url)
-            
-            # FRED uses 'observation_date' as column name, parse it after reading
-            df['observation_date'] = pd.to_datetime(df['observation_date'])
-            df = df.rename(columns={'observation_date': 'DATE', series_id: col_name})
-            
-            # Convert to numeric, handling '.' as NaN
-            df[col_name] = pd.to_numeric(df[col_name], errors='coerce')
-            
+            df["observation_date"] = pd.to_datetime(df["observation_date"])
+            df = df.rename(columns={"observation_date": "DATE", series_id: col_name})
+            df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
             all_data.append(df)
             print(f"  OK Downloaded {len(df)} records")
-            
-        except Exception as e:
-            print(f"  ERROR downloading {series_id}: {e}")
-            continue
-    
-    if not all_data:
-        print("No data downloaded!")
-        return None
-    
-    # Merge all series on DATE
-    print("\nMerging data...")
-    merged = all_data[0]
-    for df in all_data[1:]:
-        merged = merged.merge(df, on='DATE', how='outer')
-    
-    # Sort by date
-    merged = merged.sort_values('DATE').reset_index(drop=True)
+        except Exception as exc:
+            print(f"  ERROR downloading {series_id}: {exc}")
 
-    # Ensure every row is a consecutive calendar date, then fill missing
-    # weekend/holiday rates from the previous available business day.
-    rate_cols = [c for c in merged.columns if c != 'DATE']
-    merged = merged.set_index('DATE')
-    full_daily_index = pd.date_range(start=merged.index.min(), end=merged.index.max(), freq='D')
-    merged = merged.reindex(full_daily_index)
-    merged.index.name = 'DATE'
-    merged[rate_cols] = merged[rate_cols].ffill()
-    merged = merged.reset_index()
-    
-    # Rename DATE to date for consistency with app
-    merged = merged.rename(columns={'DATE': 'date'})
-    
-    print(f"\nFinal dataset: {len(merged)} rows from {merged['date'].min()} to {merged['date'].max()}")
-    print(f"Columns: {list(merged.columns)}")
-    
+    if not all_data:
+        print("No data downloaded.")
+        return None
+
+    merged_new = all_data[0]
+    for df in all_data[1:]:
+        merged_new = merged_new.merge(df, on="DATE", how="outer")
+    merged_new = merged_new.sort_values("DATE").reset_index(drop=True)
+    merged_new = merged_new.rename(columns={"DATE": "date"})
+    merged_new = enforce_daily_timeline(merged_new, date_col="date")
+
+    if not existing.empty:
+        merged = pd.concat([existing, merged_new], ignore_index=True)
+        merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    else:
+        merged = merged_new
+
+    merged = enforce_daily_timeline(merged, date_col="date")
+    print(f"Final dataset: {len(merged)} rows from {merged['date'].min()} to {merged['date'].max()}")
     return merged
+
 
 if __name__ == "__main__":
     print("Downloading US Treasury Yield Data from FRED...\n")
-    
+    before_rows = len(load_existing())
     df = download_treasury_data()
-    
+
     if df is not None:
-        # Save to CSV
-        output_file = Path(__file__).resolve().parent / "ust.csv"
-        df.to_csv(output_file, index=False)
-        print(f"\nOK Data saved to {output_file}")
-        
-        # Show preview
-        print("\nData preview:")
-        print(df.head(10))
-        print("\n...")
-        print(df.tail(10))
-        
-        # Show data info
-        print(f"\nData summary:")
-        print(f"  Total rows: {len(df)}")
-        print(f"  Date range: {df['date'].min()} to {df['date'].max()}")
-        print(f"  Missing values per column:")
-        for col in df.columns:
-            if col != 'date':
-                missing = df[col].isna().sum()
-                pct = (missing / len(df)) * 100
-                print(f"    {col}: {missing} ({pct:.1f}%)")
+        df.to_csv(OUTPUT_FILE, index=False)
+        print(f"\nOK Data saved to {OUTPUT_FILE}")
+        print(f"Rows added/updated: {len(df) - before_rows}")
     else:
         print("\nERROR Failed to download data")
