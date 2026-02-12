@@ -1,0 +1,5 @@
+git init
+git config --global user.email "kushagra.vaid@outlook.com"
+git config --global user.name "Kushagra Vaid"
+git remote add origin https://github.com/kvaid/economicindicators.git
+git branch -M main

@@ -1,0 +1,257 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #f2f5f9;
+  --panel: #ffffff;
+  --panel-accent: #0b3a63;
+  --panel-accent-soft: #eff5fb;
+  --text-main: #162130;
+  --text-muted: #5b6778;
+  --border: #d7e0ea;
+  --shadow: 0 10px 30px rgba(12, 41, 66, 0.12);
+  --radius: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Segoe UI", Tahoma, sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 20% 0%, #e9f3ff 0%, transparent 35%),
+    radial-gradient(circle at 100% 0%, #f5f0ff 0%, transparent 30%),
+    var(--bg);
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 330px;
+  padding: 20px;
+  border-right: 1px solid var(--border);
+  height: 100vh;
+  overflow-y: auto;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  background: linear-gradient(180deg, #fcfdff 0%, #f6f9fd 100%);
+  box-shadow: var(--shadow);
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: 0.01em;
+}
+
+.primary-btn,
+.preset-btn {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-family: inherit;
+}
+
+.primary-btn {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #0b3a63 0%, #2a6ca0 100%);
+  box-shadow: 0 6px 18px rgba(11, 58, 99, 0.28);
+}
+
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(11, 58, 99, 0.35);
+}
+
+.refresh-status {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+.control-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--panel-accent);
+  margin-bottom: 8px;
+}
+
+.control-group {
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.control-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.35;
+  color: var(--text-main);
+}
+
+.maturity-grid {
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.maturity-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-main);
+  border-radius: 8px;
+  padding: 7px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.maturity-btn:hover {
+  border-color: #9eb3c8;
+  background: var(--panel-accent-soft);
+}
+
+.maturity-btn-active {
+  color: #fff;
+  border-color: #1e4f78;
+  background: linear-gradient(135deg, #1f5f93 0%, #2f78b3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.date-range {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.date-single {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.date-range .DateRangePickerInput,
+.date-range .SingleDatePicker,
+.date-range .DateInput {
+  width: 100%;
+}
+
+.date-range .DateInput_input {
+  font-size: 13px;
+  padding: 7px 8px;
+}
+
+.timeline-slider {
+  margin-top: 12px;
+  margin-bottom: 2px;
+}
+
+.timeline-slider .rc-slider-mark-text {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.preset-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.preset-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-main);
+  border-radius: 8px;
+  padding: 7px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.preset-btn:hover {
+  border-color: #9eb3c8;
+  background: var(--panel-accent-soft);
+}
+
+.preset-btn-active {
+  color: #fff;
+  border-color: #1e4f78;
+  background: linear-gradient(135deg, #1f5f93 0%, #2f78b3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.freq-label {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.copyright {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.main-content {
+  margin-left: 350px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.DateRangePicker_picker {
+  z-index: 3000 !important;
+}
+
+.page-title {
+  margin: 0 0 10px 0;
+}
+
+.warning-message {
+  color: #b00020;
+  margin-bottom: 8px;
+}
+
+#indicator-graph {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 8px 20px rgba(12, 41, 66, 0.06);
+}
+
+@media (max-width: 980px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    box-shadow: none;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+}

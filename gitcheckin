@@ -1,0 +1,12 @@
+# This file must be used with "bash gitcheckin"
+# Only commit if there are changes
+if [[ -n $(git status -s) ]]; then
+    git add .
+    git commit -m "Fix requirements and error handling"
+fi
+
+# Pull with allow-unrelated-histories to fix synchronization issues
+git pull origin main --allow-unrelated-histories --no-edit
+
+# Push to GitHub
+git push origin main
