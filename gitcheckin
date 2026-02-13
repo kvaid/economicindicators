@@ -1,8 +1,13 @@
 # This file must be used with "bash gitcheckin"
 # Only commit if there are changes
 if [[ -n $(git status -s) ]]; then
+    read -r -p "Enter commit message: " commit_msg
+    if [[ -z "${commit_msg// }" ]]; then
+        echo "Commit message is empty. Aborting."
+        exit 1
+    fi
     git add .
-    git commit -m "Fix requirements and error handling"
+    git commit -m "$commit_msg"
 fi
 
 # Pull with allow-unrelated-histories to fix synchronization issues

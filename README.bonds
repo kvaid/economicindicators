@@ -1,0 +1,70 @@
+BAMLC0A0CMEY -> ice_bofa_us_corporate_effective_yield
+BAMLH0A0HYM2EY -> ice_bofa_us_high_yield_effective_yield
+BAMLC0A1CAAAEY -> ice_bofa_aaa_us_corporate_effective_yield
+BAMLC0A4CBBBEY -> ice_bofa_bbb_us_corporate_effective_yield
+FRED_API_KEY = 69da3d502e36febadb1d149b360b8464
+
+
+
+
+List of Bond Yield-Related ICE BofA Indices Available on FRED
+The Federal Reserve Economic Data (FRED) platform provides a variety of ICE BofA (formerly Bank of America Merrill Lynch) bond indices focused on yields, effective yields, semi-annual yields to worst, and option-adjusted spreads (OAS). These are downloadable in formats like CSV, Excel, or JSON directly from their series pages. Below is a comprehensive list compiled from FRED's search results for ICE BofA yield-related series. All data is daily and not seasonally adjusted, typically starting from the mid-1990s.
+I've organized them into a table for clarity, grouped loosely by category (e.g., US High Yield, US Corporate, Emerging Markets). Note that some descriptions mention subsets of broader indices, and OAS measures the spread over Treasuries. For full details or downloads, search the series ID on fred.stlouisfed.org.
+Series ID	Title	Description
+US High Yield		
+BAMLH0A0HYM2	ICE BofA US High Yield Index Option-Adjusted Spread	Spreads between a computed index of all bonds below investment grade and a spot Treasury curve.
+BAMLH0A0HYM2EY	ICE BofA US High Yield Index Effective Yield	Effective yield of the index tracking US dollar denominated below investment grade corporate debt.
+BAMLH0A0HYM2SYTW	ICE BofA US High Yield Index Semi-Annual Yield to Worst	Semi-annual yield to worst for below investment grade US corporate debt.
+BAMLH0A3HYC	ICE BofA CCC & Lower US High Yield Index Option-Adjusted Spread	OAS for bonds rated CCC or lower.
+BAMLH0A3HYCEY	ICE BofA CCC & Lower US High Yield Index Effective Yield	Effective yield for CCC-rated or lower US high yield bonds.
+BAMLH0A3HYCSYTW	ICE BofA CCC & Lower US High Yield Index Semi-Annual Yield to Worst	Semi-annual yield to worst for CCC-rated or lower bonds.
+BAMLH0A1HYBB	ICE BofA BB US High Yield Index Option-Adjusted Spread	OAS for BB-rated US high yield bonds.
+BAMLH0A1HYBBEY	ICE BofA BB US High Yield Index Effective Yield	Effective yield for BB-rated US high yield bonds.
+BAMLH0A1HYBBSYTW	ICE BofA BB US High Yield Index Semi-Annual Yield to Worst	Semi-annual yield to worst for BB-rated bonds.
+BAMLH0A2HYB	ICE BofA Single-B US High Yield Index Option-Adjusted Spread	OAS for B-rated US high yield bonds.
+BAMLH0A2HYBEY	ICE BofA Single-B US High Yield Index Effective Yield	Effective yield for B-rated US high yield bonds.
+Euro High Yield		
+BAMLHE00EHYIOAS	ICE BofA Euro High Yield Index Option-Adjusted Spread	OAS for Euro-denominated high yield bonds.
+BAMLHE00EHYIEY	ICE BofA Euro High Yield Index Effective Yield	Effective yield for Euro high yield bonds.
+BAMLHE00EHYISYTW	ICE BofA Euro High Yield Index Semi-Annual Yield to Worst	Semi-annual yield to worst for Euro high yield bonds.
+US Corporate (Investment Grade)		
+BAMLC0A0CMEY	ICE BofA US Corporate Index Effective Yield	Effective yield for investment-grade US corporate bonds.
+BAMLC0A0CMSYTW	ICE BofA US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for investment-grade US corporates.
+BAMLC0A1CAAAEY	ICE BofA AAA US Corporate Index Effective Yield	Effective yield for AAA-rated US corporates.
+BAMLC0A1CAAASYTW	ICE BofA AAA US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for AAA-rated bonds.
+BAMLC0A2CAAEY	ICE BofA AA US Corporate Index Effective Yield	Effective yield for AA-rated US corporates (inferred from similar series).
+BAMLC0A2CAASYTW	ICE BofA AA US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for AA-rated bonds.
+BAMLC0A3CAEY	ICE BofA Single-A US Corporate Index Effective Yield	Effective yield for A-rated US corporates.
+BAMLC0A3CASYTW	ICE BofA Single-A US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for A-rated bonds.
+BAMLC0A4CBBBEY	ICE BofA BBB US Corporate Index Effective Yield	Effective yield for BBB-rated US corporates.
+BAMLC0A4CBBBSYTW	ICE BofA BBB US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for BBB-rated bonds.
+US Corporate by Maturity		
+BAMLC1A0C13YSYTW	ICE BofA 1-3 Year US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for 1-3 year maturity investment-grade corporates.
+BAMLC2A0C35YEY	ICE BofA 3-5 Year US Corporate Index Effective Yield	Effective yield for 3-5 year maturity.
+BAMLC2A0C35YSYTW	ICE BofA 3-5 Year US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for 3-5 year maturity.
+BAMLC3A0C57YEY	ICE BofA 5-7 Year US Corporate Index Effective Yield	Effective yield for 5-7 year maturity.
+BAMLC4A0C710YSYTW	ICE BofA 7-10 Year US Corporate Index Semi-Annual Yield to Worst	Semi-annual yield to worst for 7-10 year maturity.
+BAMLC7A0C1015YEY	ICE BofA 10-15 Year US Corporate Index Effective Yield	Effective yield for 10-15 year maturity.
+BAMLC8A0C15PYEY	ICE BofA 15+ Year US Corporate Index Effective Yield	Effective yield for 15+ year maturity.
+Emerging Markets		
+BAMLEMHBHYCRPIOAS	ICE BofA High Yield Emerging Markets Corporate Plus Index Option-Adjusted Spread	OAS for high yield emerging markets corporates.
+BAMLEMHYHYLCRPIUSOAS	ICE BofA High Yield US Emerging Markets Liquid Corporate Plus Index Option-Adjusted Spread	OAS for high yield US-denominated EM liquid corporates.
+BAMLEMIBHGCRPIEY	ICE BofA High Grade Emerging Markets Corporate Plus Index Effective Yield	Effective yield for high-grade (AAA-BBB) EM corporates.
+BAMLEMHGHGLCRPIUSEY	ICE BofA High Grade US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for high-grade US-denominated EM liquid corporates.
+BAMLEM2BRRBBBCRPIEY	ICE BofA BBB Emerging Markets Corporate Plus Index Effective Yield	Effective yield for BBB-rated EM corporates.
+BAMLEM3BRRBBCRPIEY	ICE BofA BB Emerging Markets Corporate Plus Index Effective Yield	Effective yield for BB-rated EM corporates.
+BAMLEM3BRRBBCRPISYTW	ICE BofA BB Emerging Markets Corporate Plus Index Semi-Annual Yield to Worst	Semi-annual yield to worst for BB-rated EM corporates.
+BAMLEM3RBBLCRPIUSEY	ICE BofA BB US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for BB-rated US-denominated EM liquid corporates.
+BAMLEM4BRRBLCRPIEY	ICE BofA B & Lower Emerging Markets Corporate Plus Index Effective Yield	Effective yield for B-rated or lower EM corporates.
+BAMLEM4RBLLCRPIUSEY	ICE BofA B & Lower US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for B-rated or lower US-denominated EM liquid corporates.
+BAMLEMEBCRPIEEY	ICE BofA Euro Emerging Markets Corporate Plus Index Effective Yield	Effective yield for Euro-denominated EM corporates.
+BAMLEMPBPUBSICRPIEY	ICE BofA Public Sector Issuers Emerging Markets Corporate Plus Index Effective Yield	Effective yield for public sector EM issuers (note: temporarily suspended).
+BAMLEMRECRPIEMEAEY	ICE BofA EMEA Emerging Markets Corporate Plus Index Effective Yield	Effective yield for Europe, Middle East, Africa EM corporates.
+BAMLEMRACRPIASIAEY	ICE BofA Asia Emerging Markets Corporate Plus Index Effective Yield	Effective yield for Asia EM corporates.
+BAMLEMRLCRPILAEY	ICE BofA Latin America Emerging Markets Corporate Plus Index Effective Yield	Effective yield for Latin America EM corporates.
+BAMLEMLLLCRPILAUSEY	ICE BofA Latin America US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for Latin America US-denominated EM liquid corporates.
+BAMLEMALLCRPIASIAUSEY	ICE BofA Asia US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for Asia US-denominated EM liquid corporates.
+BAMLEM1RAAA2ALCRPIUSEY	ICE BofA AAA-A US Emerging Markets Liquid Corporate Plus Index Effective Yield	Effective yield for AAA-A rated US-denominated EM liquid corporates.
+
+This list covers the main yield and OAS-related ICE BofA indices on FRED
+
