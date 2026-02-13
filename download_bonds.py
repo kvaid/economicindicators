@@ -16,7 +16,7 @@ ERROR_FILE = BASE_DIR / "bond_download_errors.csv"
 START_DATE_FRED = "2000-01-01"
 START_DATE_ETF = "2005-01-01"
 WEEKLY_RULE = "W-FRI"
-ETF_YIELD_WINDOW_WEEKS = 8  # Set to 8 for a shorter rolling window.
+ETF_YIELD_WINDOW_WEEKS = 52  # Set to 8 for a shorter rolling window.
 FRED_BASE_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
 FRED_SERIES: dict[str, str] = {
@@ -34,6 +34,17 @@ SECTOR_ETFS: dict[str, str] = {
     "IG_MUNIS": "MUB",
     "HY_MUNIS": "HYD",
 }
+
+
+def round_etf_proxy_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
+    if df.empty:
+        return df
+    out = df.copy()
+    etf_cols = [f"{sector}:{ticker}" for sector, ticker in SECTOR_ETFS.items()]
+    existing_cols = [col for col in etf_cols if col in out.columns]
+    if existing_cols:
+        out[existing_cols] = out[existing_cols].round(digits)
+    return out
 
 
 def download_fred_weekly(start_date: str, end_date: str) -> pd.DataFrame:
@@ -130,6 +141,7 @@ def download_all_bond_data() -> tuple[pd.DataFrame, list[dict[str, str]]]:
 if __name__ == "__main__":
     try:
         combined_df, download_errors = download_all_bond_data()
+        combined_df = round_etf_proxy_columns(combined_df, digits=2)
         combined_df.reset_index().to_csv(
             OUTPUT_FILE,
             index=False,

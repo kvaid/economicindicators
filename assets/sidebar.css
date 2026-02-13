@@ -74,6 +74,25 @@ body {
   box-shadow: 0 8px 20px rgba(11, 58, 99, 0.35);
 }
 
+.download-dataset-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: normal;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2e8b57 0%, #3fa56a 100%);
+  box-shadow: 0 6px 18px rgba(46, 139, 87, 0.28);
+}
+
+.download-dataset-btn:hover {
+  box-shadow: 0 8px 20px rgba(46, 139, 87, 0.36);
+}
+
 .refresh-status {
   margin-top: 8px;
   font-size: 13px;
