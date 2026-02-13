@@ -729,6 +729,7 @@ timeline_marks = build_timeline_marks(timeline_min_dt, max_dt)
 dataset_range_text = f"Downloaded range: {min_dt.strftime('%b-%Y')} to {max_dt.strftime('%b-%Y')}"
 
 app = Dash(__name__)
+server = app.server
 app.title = "Key Economic Indicators"
 
 
