@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pandas as pd
 
-OUTPUT_FILE = Path(__file__).resolve().parent / "inflation.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_FILE = DATA_DIR / "inflation.csv"
 SERIES_ID = "PCEPILFE"
 YOY_ANCHOR_START = "1989-01-01"
 YOY_ANCHOR_END = "1990-12-31"
@@ -73,6 +75,7 @@ def download_cpi_data() -> pd.DataFrame | None:
 
 if __name__ == "__main__":
     print("Downloading Core PCE Inflation Data from FRED...\n")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     before_rows = len(load_existing())
     df = download_cpi_data()
 

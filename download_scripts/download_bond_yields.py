@@ -8,22 +8,24 @@ from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
+from fredapi import Fred
 
 BASE_DIR = Path(__file__).resolve().parent
-OUTPUT_FILE = BASE_DIR / "bondyields.csv"
-ERROR_FILE = BASE_DIR / "bond_download_errors.csv"
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_FILE = DATA_DIR / "bondyields.csv"
+ERROR_FILE = DATA_DIR / "bond_download_errors.csv"
 
 START_DATE_FRED = "2000-01-01"
 START_DATE_ETF = "2005-01-01"
 WEEKLY_RULE = "W-FRI"
 ETF_YIELD_WINDOW_WEEKS = 52  # Set to 8 for a shorter rolling window.
-FRED_BASE_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
 
 FRED_SERIES: dict[str, str] = {
     "ice_bofa_us_corporate_effective_yield": "BAMLC0A0CMEY",
     "ice_bofa_us_high_yield_effective_yield": "BAMLH0A0HYM2EY",
     "ice_bofa_aaa_us_corporate_effective_yield": "BAMLC0A1CAAAEY",
-    "ice_bofa_bbb_us_corporate_effective_yield": "BAMLC0A4CBBBEY",
+    "ice_bofa_b_us_corporate_effective_yield": "BAMLC0A4CBBBEY",
 }
 
 SECTOR_ETFS: dict[str, str] = {
@@ -48,14 +50,25 @@ def round_etf_proxy_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
 
 
 def download_fred_weekly(start_date: str, end_date: str) -> pd.DataFrame:
+    fred_client = Fred(api_key=FRED_API_KEY)
     frames: list[pd.DataFrame] = []
     for out_col, series_id in FRED_SERIES.items():
-        url = f"{FRED_BASE_URL}?id={series_id}&cosd={start_date}&coed={end_date}"
-        df = pd.read_csv(url)
-        df["observation_date"] = pd.to_datetime(df["observation_date"])
-        df = df.rename(columns={"observation_date": "date", series_id: out_col})
+        series = fred_client.get_series(
+            series_id,
+            observation_start=start_date,
+            observation_end=end_date,
+        )
+        if series is None or series.empty:
+            continue
+        df = series.rename(out_col).to_frame().reset_index()
+        df = df.rename(columns={"index": "date"})
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df[out_col] = pd.to_numeric(df[out_col], errors="coerce")
+        df = df.dropna(subset=["date"])
         frames.append(df[["date", out_col]])
+
+    if not frames:
+        return pd.DataFrame()
 
     merged = frames[0]
     for df in frames[1:]:
@@ -140,6 +153,7 @@ def download_all_bond_data() -> tuple[pd.DataFrame, list[dict[str, str]]]:
 
 if __name__ == "__main__":
     try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
         combined_df, download_errors = download_all_bond_data()
         combined_df = round_etf_proxy_columns(combined_df, digits=2)
         combined_df.reset_index().to_csv(

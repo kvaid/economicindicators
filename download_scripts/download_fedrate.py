@@ -1,14 +1,18 @@
 """
-Download Federal Reserve target rate data from FRED and save to fedrate.csv.
+Download Federal Reserve target rate data using fredapi and save to fedrate.csv.
 Builds a full authoritative monthly history each run for data integrity.
 """
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from fredapi import Fred
 
-OUTPUT_FILE = Path(__file__).resolve().parent / "fedrate.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_FILE = DATA_DIR / "fedrate.csv"
 TARGET_SERIES_CUTOFF = pd.Timestamp("2008-12-16")
+FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
 
 
 def load_existing() -> pd.DataFrame:
@@ -21,25 +25,33 @@ def load_existing() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def fetch_fred_series(
+    fred_client: Fred, series_id: str, start_date: str, end_date: str
+) -> pd.DataFrame:
+    series = fred_client.get_series(
+        series_id,
+        observation_start=start_date,
+        observation_end=end_date,
+    )
+    if series is None or series.empty:
+        return pd.DataFrame(columns=["observation_date", "FED_RATE"])
+    df = series.rename("FED_RATE").to_frame()
+    df.index.name = "observation_date"
+    return df.reset_index()
+
+
 def download_fed_rate_data() -> pd.DataFrame | None:
-    base_url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
     fetch_start = "1990-01-01"
     fetch_end = datetime.now().strftime("%Y-%m-%d")
     print(f"Full rebuild mode: fetch range {fetch_start} to {fetch_end}")
 
     try:
-        url_old = f"{base_url}?id=DFEDTAR&cosd={fetch_start}&coed={fetch_end}"
-        df_old = pd.read_csv(url_old)
-        df_old["observation_date"] = pd.to_datetime(df_old["observation_date"])
-        df_old = df_old.rename(columns={"DFEDTAR": "FED_RATE"}).set_index("observation_date")
-        df_old["FED_RATE"] = pd.to_numeric(df_old["FED_RATE"], errors="coerce")
+        fred_client = Fred(api_key=FRED_API_KEY)
+
+        df_old = fetch_fred_series(fred_client, "DFEDTAR", fetch_start, fetch_end).set_index("observation_date")
         df_old = df_old[df_old.index < TARGET_SERIES_CUTOFF]
 
-        url_new = f"{base_url}?id=DFEDTARU&cosd={fetch_start}&coed={fetch_end}"
-        df_new = pd.read_csv(url_new)
-        df_new["observation_date"] = pd.to_datetime(df_new["observation_date"])
-        df_new = df_new.rename(columns={"DFEDTARU": "FED_RATE"}).set_index("observation_date")
-        df_new["FED_RATE"] = pd.to_numeric(df_new["FED_RATE"], errors="coerce")
+        df_new = fetch_fred_series(fred_client, "DFEDTARU", fetch_start, fetch_end).set_index("observation_date")
         df_new = df_new[df_new.index >= TARGET_SERIES_CUTOFF]
 
         combined = pd.concat([df_old, df_new]).sort_index()
@@ -60,6 +72,7 @@ def download_fed_rate_data() -> pd.DataFrame | None:
 
 if __name__ == "__main__":
     print("Downloading Federal Reserve Interest Rate Data from FRED...\n")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     before_rows = len(load_existing())
     df = download_fed_rate_data()
 

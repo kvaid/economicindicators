@@ -58,12 +58,45 @@ CREDIT_SPREAD_BUTTON_COLORS = {
     "senior_loans": "#B71C1C",
     "agency_mbs": "#8E0000",
 }
+VOLATILITY_COLS = [
+    "vix",
+    "vxn",
+    "gvz",
+    "ovx",
+    "stlfsi",
+    "hy_oas",
+    "ig_oas",
+    "move",
+]
+VOLATILITY_DATA_COLS = {col: f"{col}_zscore" for col in VOLATILITY_COLS}
+VOLATILITY_DATA_COLS["hy_oas"] = "hy_oas"
+VOLATILITY_DATA_COLS["ig_oas"] = "ig_oas"
+VOLATILITY_BUTTON_COLORS = {
+    "vix": "#B983FF",
+    "vxn": "#A855F7",
+    "gvz": "#9333EA",
+    "ovx": "#7E22CE",
+    "stlfsi": "#6D28D9",
+    "hy_oas": "#5B21B6",
+    "ig_oas": "#4C1D95",
+    "move": "#3B0764",
+}
+VOLATILITY_HOVER_LABELS = {
+    "vix": "VIX (Equity Volatility)",
+    "vxn": "VXN (NASDAQ-100 Volatility)",
+    "gvz": "Gold Volatility",
+    "ovx": "Oil Volatility",
+    "stlfsi": "Fed Financial Stress Index",
+    "hy_oas": "High Yield Corporate OAS",
+    "ig_oas": "IG Corporate OAS",
+    "move": "Bond Volatility",
+}
 REFRESH_SCRIPTS = [
-    "download_fedrate.py",
-    "download_inflation.py",
-    "download_treasury_data.py",
-    "download_bonds.py",
-    "download_unemployment.py",
+    "download_scripts/download_fedrate.py",
+    "download_scripts/download_inflation.py",
+    "download_scripts/download_treasury_data.py",
+    "download_scripts/download_bond_yields.py",
+    "download_scripts/download_unemployment.py",
 ]
 
 refresh_lock = threading.Lock()
@@ -172,7 +205,7 @@ def start_refresh_worker() -> bool:
 
 
 def get_date_bounds() -> tuple[pd.Timestamp, pd.Timestamp]:
-    ust_df = load_and_process_csv("ust.csv")
+    ust_df = load_and_process_csv("data/ust.csv")
     if ust_df.empty:
         now = pd.Timestamp.today().normalize()
         return now, now
@@ -234,6 +267,7 @@ def build_figure(
     plot_fed: pd.DataFrame,
     plot_infl: pd.DataFrame,
     plot_unrate: pd.DataFrame,
+    plot_vol: pd.DataFrame,
     selected_maturities: list[str],
     show_yields: bool,
     show_spread: bool,
@@ -259,6 +293,14 @@ def build_figure(
     show_unemployment: bool,
     show_u6_unemployment: bool,
     show_unemp_ind: bool,
+    show_vol_vix: bool,
+    show_vol_vxn: bool,
+    show_vol_gvz: bool,
+    show_vol_ovx: bool,
+    show_vol_stlfsi: bool,
+    show_vol_hy_oas: bool,
+    show_vol_ig_oas: bool,
+    show_vol_move: bool,
 ) -> go.Figure:
     all_vals: list[float] = []
     baseline_tenor = cs_baseline_tenor if cs_baseline_tenor in SERIES else "10Y"
@@ -349,6 +391,21 @@ def build_figure(
         all_vals.extend(plot_unrate["UNEMP_INDICATOR"].dropna().tolist())
     if show_fed_rate and not plot_fed.empty:
         all_vals.extend(plot_fed["FED_RATE"].dropna().tolist())
+    if not plot_vol.empty:
+        vol_flags = {
+            "vix": show_vol_vix,
+            "vxn": show_vol_vxn,
+            "gvz": show_vol_gvz,
+            "ovx": show_vol_ovx,
+            "stlfsi": show_vol_stlfsi,
+            "hy_oas": show_vol_hy_oas,
+            "ig_oas": show_vol_ig_oas,
+            "move": show_vol_move,
+        }
+        for key, enabled in vol_flags.items():
+            z_col = VOLATILITY_DATA_COLS[key]
+            if enabled and z_col in plot_vol.columns:
+                all_vals.extend(pd.to_numeric(plot_vol[z_col], errors="coerce").dropna().tolist())
 
     if all_vals:
         v_min, v_max = min(all_vals), max(all_vals)
@@ -608,6 +665,33 @@ def build_figure(
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
+    if not plot_vol.empty:
+        vol_flags = {
+            "vix": show_vol_vix,
+            "vxn": show_vol_vxn,
+            "gvz": show_vol_gvz,
+            "ovx": show_vol_ovx,
+            "stlfsi": show_vol_stlfsi,
+            "hy_oas": show_vol_hy_oas,
+            "ig_oas": show_vol_ig_oas,
+            "move": show_vol_move,
+        }
+        for key, enabled in vol_flags.items():
+            z_col = VOLATILITY_DATA_COLS[key]
+            if not enabled or z_col not in plot_vol.columns:
+                continue
+            hover_label = VOLATILITY_HOVER_LABELS.get(key, key)
+            fig.add_trace(
+                go.Scatter(
+                    x=plot_vol["DATE"],
+                    y=pd.to_numeric(plot_vol[z_col], errors="coerce"),
+                    name=key,
+                    mode="lines",
+                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
+                    yaxis="y2",
+                    hovertemplate=f"{hover_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                )
+            )
 
     fig.update_layout(
         template="plotly_white",
@@ -650,8 +734,8 @@ def build_figure(
             "bordercolor": "rgba(15, 23, 42, 0.15)",
             "borderwidth": 1,
         },
-        height=650,
-        margin={"t": 72, "b": 40, "l": 52, "r": 52},
+        height=550,
+        margin={"t": 36, "b": 40, "l": 52, "r": 52},
         plot_bgcolor="white",
         paper_bgcolor="white",
     )
@@ -719,7 +803,7 @@ def indicator_card(label: str, value: float | None) -> html.Div:
 
 min_dt, max_dt = get_date_bounds()
 timeline_min_dt = max(min_dt, pd.to_datetime("2000-01-01"))
-default_start = max(timeline_min_dt, pd.to_datetime("2020-01-01"))
+default_start = max(timeline_min_dt, pd.to_datetime("2023-01-01"))
 timeline_total_days = max((max_dt - timeline_min_dt).days, 1)
 default_slider_range = [
     date_to_timeline_idx(default_start, timeline_min_dt, max_dt),
@@ -765,12 +849,19 @@ app.layout = html.Div(
         dcc.Store(id="show-cs-aaa-clo-state", data=False),
         dcc.Store(id="show-cs-senior-loans-state", data=False),
         dcc.Store(id="show-cs-agency-mbs-state", data=False),
-        dcc.Store(id="cs-baseline-tenor", data="10Y"),
+        dcc.Store(id="show-vol-vix-state", data=False),
+        dcc.Store(id="show-vol-vxn-state", data=False),
+        dcc.Store(id="show-vol-gvz-state", data=False),
+        dcc.Store(id="show-vol-ovx-state", data=False),
+        dcc.Store(id="show-vol-stlfsi-state", data=False),
+        dcc.Store(id="show-vol-hy_oas-state", data=False),
+        dcc.Store(id="show-vol-ig_oas-state", data=False),
+        dcc.Store(id="show-vol-move-state", data=False),
         dcc.Interval(id="refresh-progress-interval", interval=600, n_intervals=0, disabled=True),
         html.Div(
             [
-                html.H2("Controls", className="sidebar-title"),
-                html.Div("Manual Date Entry", className="control-label"),
+                html.H2("", className="sidebar-title"),
+                html.Div("SELECT DATE RANGE", className="control-label manual-date-label"),
                 html.Div(
                     [
                         dcc.DatePickerSingle(
@@ -806,12 +897,11 @@ app.layout = html.Div(
                     [html.Button(p, id=f"preset-{p}", n_clicks=0, className="preset-btn") for p in PRESETS],
                     className="preset-grid",
                 ),
-                html.Div(id="freq-label", className="freq-label"),
                 html.Hr(className="divider"),
                 html.Div(dataset_range_text, id="dataset-range-label", className="freq-label"),
                 html.Button("Refresh Data", id="refresh-btn", n_clicks=0, className="primary-btn"),
                 html.A(
-                    "Download Chart Dataset",
+                    "Download Chart Data",
                     id="download-dataset-btn",
                     href="/chart_dataset.csv",
                     target="_blank",
@@ -874,66 +964,107 @@ app.layout = html.Div(
                 dcc.Graph(id="indicator-graph"),
                 html.Div(
                     [
-                        html.Div("", className="control-label"),
                         html.Div(
                             [
-                                html.Div("Treasury Yields", className="row-tag"),
+                                html.Div("", className="control-label"),
                                 html.Div(
                                     [
-                                        html.Button("10Y-2Y", id="spread-btn", n_clicks=0, className="maturity-btn"),
-                                        *[html.Button(m, id=f"maturity-{m}", n_clicks=0, className="maturity-btn") for m in MATURITY_PRESETS],
+                                        html.Div("Treasury Yields", className="row-tag"),
+                                        html.Div(
+                                            [
+                                                html.Button("10Y-2Y", id="spread-btn", n_clicks=0, className="maturity-btn"),
+                                                *[html.Button(m, id=f"maturity-{m}", n_clicks=0, className="maturity-btn") for m in MATURITY_PRESETS],
+                                            ],
+                                            className="maturity-grid",
+                                        ),
                                     ],
-                                    className="maturity-grid",
+                                    className="yield-row",
+                                ),
+                                html.Div("", className="row-spacer"),
+                                html.Div(
+                                    [
+                                        html.Div("Bond Yields", className="row-tag"),
+                                        html.Div(
+                                            [
+                                                html.Button("IG CORP", id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA CORP", id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("HY CORP", id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("IG MUNI", id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("HY MUNI", id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA_CLO", id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("SENIOR LOANS", id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AGENCY MBS", id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                            ],
+                                            className="spread-grid",
+                                        ),
+                                    ],
+                                    className="spread-row",
                                 ),
                             ],
-                            className="yield-row",
+                            className="below-chart-controls",
                         ),
                         html.Div("", className="row-spacer"),
                         html.Div(
                             [
-                                html.Div("Bond Yields", className="row-tag"),
                                 html.Div(
                                     [
-                                        html.Button("IG CORP", id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AAA CORP", id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("HY CORP", id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("IG MUNI", id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("HY MUNI", id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AAA_CLO", id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("SENIOR LOANS", id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AGENCY MBS", id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                        html.Div(["Credit Spreads", html.Br(), "(vs Treasuries)"], className="row-tag credit-row-tag"),
+                                        dcc.Dropdown(
+                                            id="cs-baseline-tenor",
+                                            options=[{"label": m, "value": m} for m in CS_BASELINE_PRESETS],
+                                            value="10Y",
+                                            clearable=False,
+                                            searchable=False,
+                                            className="cs-baseline-dropdown",
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button("IG CORP", id="cs-ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA CORP", id="cs-aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("HY CORP", id="cs-ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("IG MUNI", id="cs-ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("HY MUNI", id="cs-hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA_CLO", id="cs-aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("SENIOR LOANS", id="cs-senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AGENCY MBS", id="cs-agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                            ],
+                                            className="spread-grid",
+                                        ),
                                     ],
-                                    className="spread-grid",
+                                    className="spread-row",
                                 ),
                             ],
-                            className="spread-row",
+                            className="below-chart-controls credit-spreads-box",
                         ),
                         html.Div("", className="row-spacer"),
                         html.Div(
                             [
-                                html.Div("CREDIT SPREADS", className="row-tag"),
-                                html.Div(
-                                    [html.Button(m, id=f"cs-baseline-{m}", n_clicks=0, className="maturity-btn") for m in CS_BASELINE_PRESETS],
-                                    className="maturity-grid",
-                                ),
                                 html.Div(
                                     [
-                                        html.Button("IG CORP", id="cs-ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AAA CORP", id="cs-aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("HY CORP", id="cs-ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("IG MUNI", id="cs-ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("HY MUNI", id="cs-hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AAA_CLO", id="cs-aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("SENIOR LOANS", id="cs-senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
-                                        html.Button("AGENCY MBS", id="cs-agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                        html.Div("Volatility Indicators", className="row-tag"),
+                                        html.Div(
+                                            [
+                                                *[
+                                                    html.Button(
+                                                        col,
+                                                        id=f"vol-{col}-btn",
+                                                        n_clicks=0,
+                                                        className="maturity-btn",
+                                                        title=VOLATILITY_HOVER_LABELS.get(col, col),
+                                                    )
+                                                    for col in VOLATILITY_COLS
+                                                ],
+                                            ],
+                                            className="spread-grid",
+                                        ),
                                     ],
-                                    className="spread-grid",
+                                    className="spread-row",
                                 ),
                             ],
-                            className="spread-row",
+                            className="below-chart-controls volatility-box",
                         ),
                     ],
-                    className="below-chart-controls",
+                    className="below-chart-controls-wrap",
                 ),
             ],
             className="main-content",
@@ -1484,49 +1615,118 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     return new_state, cls, style
 
 
+def _toggle_volatility_button(current_state: bool, series_key: str) -> tuple[bool, str, dict]:
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    color = VOLATILITY_BUTTON_COLORS[series_key]
+    style = (
+        {
+            "background": color,
+            "backgroundColor": color,
+            "backgroundImage": "none",
+            "borderColor": color,
+            "color": "#FFFFFF",
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
 @app.callback(
-    Output("cs-baseline-tenor", "data"),
-    [Input(f"cs-baseline-{m}", "n_clicks") for m in CS_BASELINE_PRESETS],
-    State("cs-baseline-tenor", "data"),
+    Output("show-vol-vix-state", "data"),
+    Output("vol-vix-btn", "className"),
+    Output("vol-vix-btn", "style"),
+    Input("vol-vix-btn", "n_clicks"),
+    State("show-vol-vix-state", "data"),
     prevent_initial_call=True,
 )
-def set_cs_baseline_tenor(*args):
-    current = args[-1] if args else "10Y"
-    trigger = callback_context.triggered_id
-    if not trigger:
-        return current if current in CS_BASELINE_PRESETS else "10Y"
-    tenor = str(trigger).replace("cs-baseline-", "")
-    return tenor if tenor in CS_BASELINE_PRESETS else "10Y"
+def toggle_vol_vix_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "vix")
 
 
 @app.callback(
-    [Output(f"cs-baseline-{m}", "className") for m in CS_BASELINE_PRESETS]
-    + [Output(f"cs-baseline-{m}", "style") for m in CS_BASELINE_PRESETS],
-    Input("cs-baseline-tenor", "data"),
+    Output("show-vol-vxn-state", "data"),
+    Output("vol-vxn-btn", "className"),
+    Output("vol-vxn-btn", "style"),
+    Input("vol-vxn-btn", "n_clicks"),
+    State("show-vol-vxn-state", "data"),
+    prevent_initial_call=True,
 )
-def style_cs_baseline_buttons(selected_tenor):
-    active = selected_tenor if selected_tenor in CS_BASELINE_PRESETS else "10Y"
-    class_names = [
-        "maturity-btn maturity-btn-active" if m == active else "maturity-btn"
-        for m in CS_BASELINE_PRESETS
-    ]
-    styles = []
-    for maturity in CS_BASELINE_PRESETS:
-        if maturity == active:
-            color = YIELD_COLORS.get(maturity, "#2E73B8")
-            text_color = "#0F172A" if maturity in {"1Y", "2Y", "5Y"} else "#FFFFFF"
-            styles.append(
-                {
-                    "background": color,
-                    "backgroundColor": color,
-                    "backgroundImage": "none",
-                    "borderColor": color,
-                    "color": text_color,
-                }
-            )
-        else:
-            styles.append({})
-    return class_names + styles
+def toggle_vol_vxn_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "vxn")
+
+
+@app.callback(
+    Output("show-vol-gvz-state", "data"),
+    Output("vol-gvz-btn", "className"),
+    Output("vol-gvz-btn", "style"),
+    Input("vol-gvz-btn", "n_clicks"),
+    State("show-vol-gvz-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_gvz_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "gvz")
+
+
+@app.callback(
+    Output("show-vol-ovx-state", "data"),
+    Output("vol-ovx-btn", "className"),
+    Output("vol-ovx-btn", "style"),
+    Input("vol-ovx-btn", "n_clicks"),
+    State("show-vol-ovx-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_ovx_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "ovx")
+
+
+@app.callback(
+    Output("show-vol-stlfsi-state", "data"),
+    Output("vol-stlfsi-btn", "className"),
+    Output("vol-stlfsi-btn", "style"),
+    Input("vol-stlfsi-btn", "n_clicks"),
+    State("show-vol-stlfsi-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_stlfsi_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "stlfsi")
+
+
+@app.callback(
+    Output("show-vol-hy_oas-state", "data"),
+    Output("vol-hy_oas-btn", "className"),
+    Output("vol-hy_oas-btn", "style"),
+    Input("vol-hy_oas-btn", "n_clicks"),
+    State("show-vol-hy_oas-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_hy_oas_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "hy_oas")
+
+
+@app.callback(
+    Output("show-vol-ig_oas-state", "data"),
+    Output("vol-ig_oas-btn", "className"),
+    Output("vol-ig_oas-btn", "style"),
+    Input("vol-ig_oas-btn", "n_clicks"),
+    State("show-vol-ig_oas-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_ig_oas_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "ig_oas")
+
+
+@app.callback(
+    Output("show-vol-move-state", "data"),
+    Output("vol-move-btn", "className"),
+    Output("vol-move-btn", "style"),
+    Input("vol-move-btn", "n_clicks"),
+    State("show-vol-move-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_vol_move_button(_n_clicks: int, current_state: bool):
+    return _toggle_volatility_button(current_state, "move")
 
 
 @app.callback(
@@ -1571,7 +1771,6 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
 @app.callback(
     Output("indicator-graph", "figure"),
     Output("latest-indicators", "children"),
-    Output("freq-label", "children"),
     Output("warning-message", "children"),
     Input("selected-maturities", "data"),
     Input("show-spread-state", "data"),
@@ -1591,7 +1790,15 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-cs-aaa-clo-state", "data"),
     Input("show-cs-senior-loans-state", "data"),
     Input("show-cs-agency-mbs-state", "data"),
-    Input("cs-baseline-tenor", "data"),
+    Input("show-vol-vix-state", "data"),
+    Input("show-vol-vxn-state", "data"),
+    Input("show-vol-gvz-state", "data"),
+    Input("show-vol-ovx-state", "data"),
+    Input("show-vol-stlfsi-state", "data"),
+    Input("show-vol-hy_oas-state", "data"),
+    Input("show-vol-ig_oas-state", "data"),
+    Input("show-vol-move-state", "data"),
+    Input("cs-baseline-tenor", "value"),
     Input("show-fed-rate", "value"),
     Input("show-inflation", "value"),
     Input("show-unemployment", "value"),
@@ -1620,6 +1827,14 @@ def update_visuals(
     show_cs_aaa_clo_state,
     show_cs_senior_loans_state,
     show_cs_agency_mbs_state,
+    show_vol_vix_state,
+    show_vol_vxn_state,
+    show_vol_gvz_state,
+    show_vol_ovx_state,
+    show_vol_stlfsi_state,
+    show_vol_hy_oas_state,
+    show_vol_ig_oas_state,
+    show_vol_move_state,
     cs_baseline_tenor,
     show_fed_rate_val,
     show_inflation_val,
@@ -1648,6 +1863,14 @@ def update_visuals(
     show_cs_aaa_clo = bool(show_cs_aaa_clo_state)
     show_cs_senior_loans = bool(show_cs_senior_loans_state)
     show_cs_agency_mbs = bool(show_cs_agency_mbs_state)
+    show_vol_vix = bool(show_vol_vix_state)
+    show_vol_vxn = bool(show_vol_vxn_state)
+    show_vol_gvz = bool(show_vol_gvz_state)
+    show_vol_ovx = bool(show_vol_ovx_state)
+    show_vol_stlfsi = bool(show_vol_stlfsi_state)
+    show_vol_hy_oas = bool(show_vol_hy_oas_state)
+    show_vol_ig_oas = bool(show_vol_ig_oas_state)
+    show_vol_move = bool(show_vol_move_state)
     show_fed_rate = "on" in (show_fed_rate_val or [])
     show_inflation = "on" in (show_inflation_val or [])
     show_unemployment = "on" in (show_unemployment_val or [])
@@ -1656,13 +1879,13 @@ def update_visuals(
 
     selected_maturities = selected_maturities or []
 
-    ust_df = load_and_process_csv("ust.csv")
+    ust_df = load_and_process_csv("data/ust.csv")
     if ust_df.empty:
         fig = go.Figure()
-        fig.update_layout(title="No Treasury data found. Ensure ust.csv exists.")
+        fig.update_layout(title="No Treasury data found. Ensure data/ust.csv exists.")
         with chart_dataset_lock:
             chart_dataset_cache["csv"] = "date\n"
-        return fig, [], "Treasury Data: N/A", "No Treasury data found."
+        return fig, [], "No Treasury data found."
 
     for col in SERIES.values():
         if col in ust_df.columns:
@@ -1670,7 +1893,7 @@ def update_visuals(
 
     treasury_dates = ust_df["DATE"]
 
-    bond_yields_df = load_and_process_csv("bondyields.csv")
+    bond_yields_df = load_and_process_csv("data/bondyields.csv")
     if not bond_yields_df.empty:
         for col in CREDIT_YIELD_COLS.values():
             if col in bond_yields_df.columns:
@@ -1678,7 +1901,7 @@ def update_visuals(
     else:
         bond_yields_df = pd.DataFrame()
 
-    fed_df = load_and_process_csv("fedrate.csv")
+    fed_df = load_and_process_csv("data/fedrate.csv")
     if not fed_df.empty:
         fed_df["FED_RATE"] = pd.to_numeric(fed_df["FED_RATE"], errors="coerce")
         fed_monthly = align_to_month_end(fed_df[["DATE", "FED_RATE"]])
@@ -1686,7 +1909,7 @@ def update_visuals(
     else:
         fed_monthly = pd.DataFrame()
 
-    infl_df = load_and_process_csv("inflation.csv")
+    infl_df = load_and_process_csv("data/inflation.csv")
     if not infl_df.empty:
         infl_df["PCE_YoY"] = pd.to_numeric(infl_df["PCE_YoY"], errors="coerce")
         infl_monthly = align_to_month_end(infl_df[["DATE", "PCE_YoY"]])
@@ -1694,7 +1917,7 @@ def update_visuals(
     else:
         infl_monthly = pd.DataFrame()
 
-    unrate_df = load_and_process_csv("unemployment.csv")
+    unrate_df = load_and_process_csv("data/unemployment.csv")
     if not unrate_df.empty:
         if "U6RATE" not in unrate_df.columns:
             unrate_df["U6RATE"] = pd.NA
@@ -1709,6 +1932,13 @@ def update_visuals(
         )
     else:
         unrate_monthly = pd.DataFrame()
+    vol_df = load_and_process_csv("data/volatility.csv")
+    if not vol_df.empty:
+        for z_col in VOLATILITY_DATA_COLS.values():
+            if z_col in vol_df.columns:
+                vol_df[z_col] = pd.to_numeric(vol_df[z_col], errors="coerce")
+    else:
+        vol_df = pd.DataFrame()
 
     min_date = max(ust_df["DATE"].min().date(), pd.to_datetime("2000-01-01").date())
     max_date = ust_df["DATE"].max().date()
@@ -1756,13 +1986,27 @@ def update_visuals(
             )
         else:
             bond_resampled = pd.DataFrame()
+        if not vol_df.empty:
+            vol_cols = [c for c in VOLATILITY_DATA_COLS.values() if c in vol_df.columns]
+            vol_resampled = (
+                vol_df[["DATE"] + vol_cols]
+                .set_index("DATE")
+                .resample(freq)
+                .mean()
+                .dropna(how="all")
+                .reset_index()
+            )
+        else:
+            vol_resampled = pd.DataFrame()
     else:
         ust_resampled = ust_df
         bond_resampled = bond_yields_df
+        vol_resampled = vol_df
 
     plot_ust = filter_by_date(ust_resampled, start_date, end_date)
     plot_ust["SPREAD_10Y_2Y"] = plot_ust["BC_10YEAR"] - plot_ust["BC_2YEAR"]
     plot_bond_yields = filter_by_date(bond_resampled, start_date, end_date) if not bond_resampled.empty else pd.DataFrame()
+    plot_vol = filter_by_date(vol_resampled, start_date, end_date) if not vol_resampled.empty else pd.DataFrame()
 
     plot_fed = filter_by_date(fed_monthly, start_date, end_date)
     if not plot_fed.empty and len(plot_fed) > 1:
@@ -1784,6 +2028,7 @@ def update_visuals(
         plot_fed=plot_fed,
         plot_infl=plot_infl,
         plot_unrate=plot_unrate,
+        plot_vol=plot_vol,
         selected_maturities=selected_maturities,
         show_yields=show_yields,
         show_spread=show_spread,
@@ -1809,6 +2054,14 @@ def update_visuals(
         show_unemployment=show_unemployment,
         show_u6_unemployment=show_u6_unemployment,
         show_unemp_ind=show_unemp_ind,
+        show_vol_vix=show_vol_vix,
+        show_vol_vxn=show_vol_vxn,
+        show_vol_gvz=show_vol_gvz,
+        show_vol_ovx=show_vol_ovx,
+        show_vol_stlfsi=show_vol_stlfsi,
+        show_vol_hy_oas=show_vol_hy_oas,
+        show_vol_ig_oas=show_vol_ig_oas,
+        show_vol_move=show_vol_move,
     )
 
     export_series: list[tuple[str, pd.Series]] = []
@@ -1894,6 +2147,24 @@ def update_visuals(
         s_df = filter_by_date(unrate_df[["DATE", "UNRATE", "NROU"]], start_date, end_date).copy()
         indicator_vals = pd.to_numeric(s_df["UNRATE"], errors="coerce") - pd.to_numeric(s_df["NROU"], errors="coerce")
         export_series.append(("Unemp. Indicator (U3-NROU)", pd.Series(indicator_vals.values, index=s_df["DATE"])))
+    if not vol_df.empty:
+        vol_flags = {
+            "vix": show_vol_vix,
+            "vxn": show_vol_vxn,
+            "gvz": show_vol_gvz,
+            "ovx": show_vol_ovx,
+            "stlfsi": show_vol_stlfsi,
+            "hy_oas": show_vol_hy_oas,
+            "ig_oas": show_vol_ig_oas,
+            "move": show_vol_move,
+        }
+        for key, enabled in vol_flags.items():
+            z_col = VOLATILITY_DATA_COLS[key]
+            if not enabled or z_col not in vol_df.columns:
+                continue
+            s_df = filter_by_date(vol_df[["DATE", z_col]], start_date, end_date)
+            s = pd.Series(pd.to_numeric(s_df[z_col], errors="coerce").values, index=s_df["DATE"], name=key)
+            export_series.append((key, s))
 
     latest_cards = [
         indicator_card("2Y T-bill yield", latest_non_null_value(ust_df, "BC_2YEAR")),
@@ -1907,7 +2178,7 @@ def update_visuals(
     with chart_dataset_lock:
         chart_dataset_cache["csv"] = series_items_to_csv_text(export_series)
 
-    return fig, latest_cards, f"Treasury Data: {freq_label}", warning
+    return fig, latest_cards, warning
 
 
 if __name__ == "__main__":

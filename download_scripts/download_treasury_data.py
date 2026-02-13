@@ -14,7 +14,9 @@ SERIES_IDS = {
     "BC_30YEAR": "DGS30",
 }
 
-OUTPUT_FILE = Path(__file__).resolve().parent / "ust.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_FILE = DATA_DIR / "ust.csv"
 
 
 def load_existing() -> pd.DataFrame:
@@ -91,6 +93,7 @@ def download_treasury_data() -> pd.DataFrame | None:
 
 if __name__ == "__main__":
     print("Downloading US Treasury Yield Data from FRED...\n")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     before_rows = len(load_existing())
     df = download_treasury_data()
 

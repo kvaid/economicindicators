@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pandas as pd
 
-OUTPUT_FILE = Path(__file__).resolve().parent / "unemployment.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_FILE = DATA_DIR / "unemployment.csv"
 
 
 def load_existing() -> pd.DataFrame:
@@ -75,6 +77,7 @@ def download_unemployment_data() -> pd.DataFrame | None:
 
 if __name__ == "__main__":
     print("Downloading Unemployment Data from FRED...\n")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     before_rows = len(load_existing())
     df = download_unemployment_data()
 
