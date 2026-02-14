@@ -90,16 +90,6 @@ VOLATILITY_HOVER_LABELS = {
     "ig_oas": "IG Corporate OAS",
     "move": "Bond Volatility",
 }
-VOLATILITY_BUTTON_LABELS = {
-    "vix": "VIX (BROAD EQUITIES)",
-    "vxn": "VXN (NASDAQ-100)",
-    "gvz": "GVZ (GOLD)",
-    "ovx": "OVX (OIL)",
-    "stlfsi": "STLFSI (FED STRESS INDEX)",
-    "hy_oas": "HY OAS (HY BOND SPREADS)",
-    "ig_oas": "IG OAS (IG BOND SPREADS)",
-    "move": "MOVE (BONDS)",
-}
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
     "download_scripts/download_inflation.py",
@@ -427,8 +417,8 @@ def build_figure(
         if selected_band_mode not in {"25_75", "10_90"}:
             selected_band_mode = "none"
         selected_median_mode = str(vol_median_mode or "").strip()
-        if selected_median_mode not in {"none", "10y", "3y"}:
-            selected_median_mode = "none"
+        if selected_median_mode not in {"10y", "3y"}:
+            selected_median_mode = "10y"
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
@@ -453,12 +443,6 @@ def build_figure(
         y_range = [v_min - pad, v_max + pad]
     else:
         y_range = [0, 10]
-    if show_vol_vxn:
-        y_range[1] = max(float(y_range[1]), 60.0)
-    if show_vol_ig_oas:
-        y_range[1] = max(float(y_range[1]), 3.0)
-    if show_vol_hy_oas:
-        y_range[1] = max(float(y_range[1]), 10.0)
 
     fig = go.Figure()
 
@@ -719,75 +703,46 @@ def build_figure(
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
         }
-        vix_plotted = False
-        vxn_plotted = False
-        gvz_plotted = False
-        ovx_plotted = False
-        stlfsi_plotted = False
-        ig_oas_plotted = False
-        hy_oas_plotted = False
-        move_plotted = False
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
             if not enabled or z_col not in plot_vol.columns:
                 continue
-            display_label = VOLATILITY_BUTTON_LABELS.get(key, key.upper())
+            hover_label = VOLATILITY_HOVER_LABELS.get(key, key)
             vol_series = pd.Series(
                 pd.to_numeric(plot_vol[z_col], errors="coerce").values,
                 index=pd.to_datetime(plot_vol["DATE"], errors="coerce"),
             ).sort_index()
-            if key == "vix" and not vol_series.dropna().empty:
-                vix_plotted = True
-            if key == "vxn" and not vol_series.dropna().empty:
-                vxn_plotted = True
-            if key == "gvz" and not vol_series.dropna().empty:
-                gvz_plotted = True
-            if key == "ovx" and not vol_series.dropna().empty:
-                ovx_plotted = True
-            if key == "stlfsi" and not vol_series.dropna().empty:
-                stlfsi_plotted = True
-            if key == "ig_oas" and not vol_series.dropna().empty:
-                ig_oas_plotted = True
-            if key == "hy_oas" and not vol_series.dropna().empty:
-                hy_oas_plotted = True
-            if key == "move" and not vol_series.dropna().empty:
-                move_plotted = True
             if selected_median_mode == "3y":
                 rolling_window = "1096D"
                 window_label = "3Y"
-            elif selected_median_mode == "10y":
-                rolling_window = "3652D"
-                window_label = "10Y"
             else:
                 rolling_window = "3652D"
                 window_label = "10Y"
+            vol_median = vol_series.rolling(rolling_window, min_periods=1).median()
+            median_name = f"{key} {window_label} MEDIAN"
+            median_hover = f"{hover_label} {window_label} Median"
             fig.add_trace(
                 go.Scatter(
                     x=vol_series.index,
                     y=vol_series.values,
-                    name=display_label,
+                    name=key,
                     mode="lines",
                     line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
                     yaxis="y2",
-                    hovertemplate=f"{display_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    hovertemplate=f"{hover_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
-            if selected_median_mode in {"10y", "3y"}:
-                vol_median = vol_series.rolling(rolling_window, min_periods=1).median()
-                median_name = f"{display_label} {window_label} MEDIAN"
-                median_hover = f"{display_label} {window_label} Median"
-                fig.add_trace(
-                    go.Scatter(
-                        x=vol_median.index,
-                        y=vol_median.values,
-                        name=median_name,
-                        mode="lines",
-                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
-                        yaxis="y2",
-                        hovertemplate=f"{median_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
-                    )
+            fig.add_trace(
+                go.Scatter(
+                    x=vol_median.index,
+                    y=vol_median.values,
+                    name=median_name,
+                    mode="lines",
+                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
+                    yaxis="y2",
+                    hovertemplate=f"{median_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
-            
+            )
             if selected_band_mode == "10_90":
                 vol_p10 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.10)
                 vol_p90 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.90)
@@ -795,26 +750,26 @@ def build_figure(
                     go.Scatter(
                         x=vol_p10.index,
                         y=vol_p10.values,
-                        name=f"{display_label} {window_label} P10",
+                        name=f"{key} {window_label} P10",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         yaxis="y2",
-                        hovertemplate=f"{display_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{hover_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
                         x=vol_p90.index,
                         y=vol_p90.values,
-                        name=f"{display_label} {window_label} P90",
+                        name=f"{key} {window_label} P90",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.05)",
                         yaxis="y2",
-                        hovertemplate=f"{display_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{hover_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
             elif selected_band_mode == "25_75":
@@ -824,276 +779,28 @@ def build_figure(
                     go.Scatter(
                         x=vol_p25.index,
                         y=vol_p25.values,
-                        name=f"{display_label} {window_label} P25",
+                        name=f"{key} {window_label} P25",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         yaxis="y2",
-                        hovertemplate=f"{display_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{hover_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
                         x=vol_p75.index,
                         y=vol_p75.values,
-                        name=f"{display_label} {window_label} P75",
+                        name=f"{key} {window_label} P75",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.08)",
                         yaxis="y2",
-                        hovertemplate=f"{display_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{hover_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
-        if vix_plotted:
-            fig.add_hline(
-                y=15,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 15: Complacency/Low Volatility",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=30,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 30: Heightened Fear/Market Stress",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if vxn_plotted:
-            fig.add_hline(
-                y=20,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 20: Low fear/Complacency",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=30,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="30-40: Elevated Stress/Nervousness (e.g., sector-specific fears, earnings volatility)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=50,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 50: Significant Market Fear)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if gvz_plotted:
-            fig.add_hline(
-                y=20,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 20: Low Uncertainty/Complacency (stable prices, limited safe-haven demand)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=30,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="30-40: Elevated Stress/Nervousness (e.g., rapid gold price swings, macro surprises)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=40,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 40: Significant Fear, often during crises or sharp corrections in gold",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if ovx_plotted:
-            fig.add_hline(
-                y=35,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 35: Low Uncertainty/Complacency (stable prices, limited shocks)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=50,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="50-70: Elevated Stress/Nervousness (e.g., rapid price swings, supply disruptions)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=70,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 70: Significant Fear, often during major oil crises or sharp corrections",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if stlfsi_plotted:
-            fig.add_hline(
-                y=0,
-                yref="y2",
-                line_dash="dash",
-                line_color="#6B7280",
-                line_width=1.2,
-                annotation_text="Average/Normal Financial Market Stress",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#4B5563"},
-            )
-            fig.add_hline(
-                y=-0.5,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below -0.5: Low Stress/Complacency (stable spreads, low volatility, supportive conditions)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=0.5,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="0.5 to 2: Elevated Stress/Nervousness ((e.g., widening spreads, rising volatility)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=3,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 3: Significant Systemic Fear, often during major crises",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if ig_oas_plotted:
-            fig.add_hline(
-                y=0.8,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 1.0: Low Credit Risk/Complacency tight spreads, strong investor demand for corporates, stable economy)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=1.5,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="1.5-2.0: Elevated Stress/Nervousness(e.g., widening due to recession fears, inflation surprises, or liquidity issues)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=3,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 3.0: Significant Significant Credit Fear, often during crises or sharp economic downturns",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if hy_oas_plotted:
-            fig.add_hline(
-                y=3,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 3.0: Low Credit Risk/Complacency (tight spreads, high demand for yield, stable economy, low defaults)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=6,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="6.0-8.0: Elevated Stress/Nervousness (e.g., widening due to recession fears, liquidity issues, or sector problems)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=10,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 10.0: Significant Credit Fear, often during crises or sharp economic downturns",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-        if move_plotted:
-            fig.add_hline(
-                y=75,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 70-80: Low Uncertainty/Complacency (Stable Rate Outlooks)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=110,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="100-120+: Elevated Uncertainty (e.g. Fed policy, Inflation)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=140,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 140: Significant Stress (e.g. Rapid Yield Swings)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
 
     fig.update_layout(
         template="plotly_white",
@@ -1401,7 +1108,7 @@ app.layout = html.Div(
                                                 html.Button("HY CORP", id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("IG MUNI", id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("HY MUNI", id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA_CLO", id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA CLO", id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("SENIOR LOANS", id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("AGENCY MBS", id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
                                             ],
@@ -1434,7 +1141,7 @@ app.layout = html.Div(
                                                 html.Button("HY CORP", id="cs-ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("IG MUNI", id="cs-ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("HY MUNI", id="cs-hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA_CLO", id="cs-aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("AAA CLO", id="cs-aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("SENIOR LOANS", id="cs-senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button("AGENCY MBS", id="cs-agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
                                             ],
@@ -1469,11 +1176,10 @@ app.layout = html.Div(
                                         dcc.Dropdown(
                                             id="vol-median-select",
                                             options=[
-                                                {"label": "No overlay", "value": "none"},
                                                 {"label": "10Y median overlay", "value": "10y"},
                                                 {"label": "3Y median overlay", "value": "3y"},
                                             ],
-                                            value="none",
+                                            value="10y",
                                             clearable=False,
                                             searchable=False,
                                             persistence=False,
@@ -1483,7 +1189,7 @@ app.layout = html.Div(
                                             [
                                                 *[
                                                     html.Button(
-                                                        VOLATILITY_BUTTON_LABELS.get(col, col.upper()),
+                                                        col,
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
                                                         className="maturity-btn",
