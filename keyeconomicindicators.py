@@ -68,18 +68,16 @@ VOLATILITY_COLS = [
     "ig_oas",
     "move",
 ]
-VOLATILITY_DATA_COLS = {col: f"{col}_zscore" for col in VOLATILITY_COLS}
-VOLATILITY_DATA_COLS["hy_oas"] = "hy_oas"
-VOLATILITY_DATA_COLS["ig_oas"] = "ig_oas"
+VOLATILITY_DATA_COLS = {col: col for col in VOLATILITY_COLS}
 VOLATILITY_BUTTON_COLORS = {
-    "vix": "#B983FF",
-    "vxn": "#A855F7",
-    "gvz": "#9333EA",
-    "ovx": "#7E22CE",
+    "vix": "#BE185D",
+    "vxn": "#0891B2",
+    "gvz": "#D97706",
+    "ovx": "#DC2626",
     "stlfsi": "#6D28D9",
-    "hy_oas": "#5B21B6",
-    "ig_oas": "#4C1D95",
-    "move": "#3B0764",
+    "hy_oas": "#B45309",
+    "ig_oas": "#0F766E",
+    "move": "#374151",
 }
 VOLATILITY_HOVER_LABELS = {
     "vix": "VIX (Equity Volatility)",
@@ -681,15 +679,31 @@ def build_figure(
             if not enabled or z_col not in plot_vol.columns:
                 continue
             hover_label = VOLATILITY_HOVER_LABELS.get(key, key)
+            vol_series = pd.Series(
+                pd.to_numeric(plot_vol[z_col], errors="coerce").values,
+                index=pd.to_datetime(plot_vol["DATE"], errors="coerce"),
+            ).sort_index()
+            vol_ma_10y = vol_series.rolling("3652D", min_periods=1).mean()
             fig.add_trace(
                 go.Scatter(
-                    x=plot_vol["DATE"],
-                    y=pd.to_numeric(plot_vol[z_col], errors="coerce"),
+                    x=vol_series.index,
+                    y=vol_series.values,
                     name=key,
                     mode="lines",
                     line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
                     yaxis="y2",
                     hovertemplate=f"{hover_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=vol_ma_10y.index,
+                    y=vol_ma_10y.values,
+                    name=f"{key} 10Y AVG",
+                    mode="lines",
+                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.6, "dash": "dot"},
+                    yaxis="y2",
+                    hovertemplate=f"{hover_label} 10Y Avg<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
 
@@ -734,7 +748,7 @@ def build_figure(
             "bordercolor": "rgba(15, 23, 42, 0.15)",
             "borderwidth": 1,
         },
-        height=550,
+        height=450,
         margin={"t": 36, "b": 40, "l": 52, "r": 52},
         plot_bgcolor="white",
         paper_bgcolor="white",
@@ -860,52 +874,63 @@ app.layout = html.Div(
         dcc.Interval(id="refresh-progress-interval", interval=600, n_intervals=0, disabled=True),
         html.Div(
             [
-                html.H2("", className="sidebar-title"),
-                html.Div("SELECT DATE RANGE", className="control-label manual-date-label"),
+                html.H1("Key Economic Indicators", className="page-title"),
+                html.Div(id="warning-message", className="warning-message"),
+                html.Div(id="latest-indicators", className="latest-indicators"),
                 html.Div(
                     [
-                        dcc.DatePickerSingle(
-                            id="start-date",
-                            min_date_allowed=timeline_min_dt.date(),
-                            max_date_allowed=max_dt.date(),
-                            date=default_start.date(),
-                            display_format="YYYY-MM-DD",
-                            className="date-single",
+                        html.Div("Select Date Range", className="chart-panel-date-label"),
+                        html.Div(
+                            [
+                                dcc.DatePickerSingle(
+                                    id="start-date",
+                                    min_date_allowed=timeline_min_dt.date(),
+                                    max_date_allowed=max_dt.date(),
+                                    date=default_start.date(),
+                                    display_format="YYYY-MM-DD",
+                                    className="date-single",
+                                ),
+                                dcc.DatePickerSingle(
+                                    id="end-date",
+                                    min_date_allowed=timeline_min_dt.date(),
+                                    max_date_allowed=max_dt.date(),
+                                    date=max_dt.date(),
+                                    display_format="YYYY-MM-DD",
+                                    className="date-single",
+                                ),
+                            ],
+                            className="date-range chart-panel-date-range",
                         ),
-                        dcc.DatePickerSingle(
-                            id="end-date",
-                            min_date_allowed=timeline_min_dt.date(),
-                            max_date_allowed=max_dt.date(),
-                            date=max_dt.date(),
-                            display_format="YYYY-MM-DD",
-                            className="date-single",
+                        html.Div(
+                            [html.Button(p, id=f"preset-{p}", n_clicks=0, className="preset-btn") for p in PRESETS],
+                            className="chart-panel-presets",
+                        ),
+                        html.Div(
+                            [
+                                html.Div("", id="dataset-range-label", className="freq-label", style={"display": "none"}),
+                                dcc.RangeSlider(
+                                    id="timeline-slider",
+                                    min=0,
+                                    max=timeline_total_days,
+                                    step=1,
+                                    value=default_slider_range,
+                                    marks=timeline_marks,
+                                    allowCross=False,
+                                    className="timeline-slider chart-panel-timeline-slider",
+                                ),
+                            ],
+                            className="chart-panel-timeline",
+                        ),
+                        html.Button("Refresh Data", id="refresh-btn", n_clicks=0, className="primary-btn chart-action-btn"),
+                        html.A(
+                            "Download Chart",
+                            id="download-dataset-btn",
+                            href="/chart_dataset.csv",
+                            target="_blank",
+                            className="primary-btn download-dataset-btn chart-action-btn",
                         ),
                     ],
-                    className="date-range",
-                ),
-                dcc.RangeSlider(
-                    id="timeline-slider",
-                    min=0,
-                    max=timeline_total_days,
-                    step=1,
-                    value=default_slider_range,
-                    marks=timeline_marks,
-                    allowCross=False,
-                    className="timeline-slider",
-                ),
-                html.Div(
-                    [html.Button(p, id=f"preset-{p}", n_clicks=0, className="preset-btn") for p in PRESETS],
-                    className="preset-grid",
-                ),
-                html.Hr(className="divider"),
-                html.Div(dataset_range_text, id="dataset-range-label", className="freq-label"),
-                html.Button("Refresh Data", id="refresh-btn", n_clicks=0, className="primary-btn"),
-                html.A(
-                    "Download Chart Data",
-                    id="download-dataset-btn",
-                    href="/chart_dataset.csv",
-                    target="_blank",
-                    className="primary-btn download-dataset-btn",
+                    className="chart-panel-actions",
                 ),
                 html.Div(
                     [
@@ -913,55 +938,50 @@ app.layout = html.Div(
                         html.Progress(id="refresh-progress-bar", value="0", max=100, className="refresh-progress-bar"),
                     ],
                     id="refresh-progress-wrap",
+                    className="chart-panel-progress",
                     style={"display": "none"},
                 ),
-                html.Hr(className="divider"),
-                html.Div("(c) Kushagra Vaid 2026", className="copyright"),
-            ],
-            className="sidebar",
-        ),
-        html.Div(
-            [
-                html.H1("Key Economic Indicators", className="page-title"),
-                html.Div(id="warning-message", className="warning-message"),
-                html.Div(id="latest-indicators", className="latest-indicators"),
+                dcc.Graph(id="indicator-graph"),
                 html.Div(
                     [
-                        dcc.Checklist(
-                            id="show-fed-rate",
-                            options=[{"label": "Federal Reserve Rate", "value": "on"}],
-                            value=[],
-                            className="control-group",
-                        ),
-                        dcc.Checklist(
-                            id="show-inflation",
-                            options=[{"label": "Core PCE Inflation", "value": "on"}],
-                            value=[],
-                            className="control-group",
-                        ),
-                        dcc.Checklist(
-                            id="show-unemployment",
-                            options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
-                            value=[],
-                            className="control-group",
-                        ),
-                        dcc.Checklist(
-                            id="show-u6-unemployment",
-                            options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
-                            value=[],
-                            className="control-group",
-                        ),
-                        dcc.Checklist(
-                            id="show-unemp-ind",
-                            options=[{"label": "U3-NROU Unemployment", "value": "on"}],
-                            value=[],
-                            className="control-group",
+                        html.Div(
+                            [
+                                dcc.Checklist(
+                                    id="show-fed-rate",
+                                    options=[{"label": "Federal Reserve Rate", "value": "on"}],
+                                    value=[],
+                                    className="control-group",
+                                ),
+                                dcc.Checklist(
+                                    id="show-inflation",
+                                    options=[{"label": "Core PCE Inflation", "value": "on"}],
+                                    value=[],
+                                    className="control-group",
+                                ),
+                                dcc.Checklist(
+                                    id="show-unemployment",
+                                    options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
+                                    value=[],
+                                    className="control-group",
+                                ),
+                                dcc.Checklist(
+                                    id="show-u6-unemployment",
+                                    options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
+                                    value=[],
+                                    className="control-group",
+                                ),
+                                dcc.Checklist(
+                                    id="show-unemp-ind",
+                                    options=[{"label": "U3-NROU Unemployment", "value": "on"}],
+                                    value=[],
+                                    className="control-group",
+                                ),
+                            ],
+                            className="secondary-controls",
                         ),
                     ],
-                    className="secondary-controls",
+                    className="below-chart-controls macro-controls-box",
                 ),
-                html.Div("", className="row-spacer"),
-                dcc.Graph(id="indicator-graph"),
                 html.Div(
                     [
                         html.Div(

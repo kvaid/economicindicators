@@ -259,10 +259,102 @@ body {
 }
 
 .main-content {
-  margin-left: 350px;
+  margin-left: 0;
   padding: 24px;
   position: relative;
   z-index: 1;
+}
+
+.chart-panel-actions {
+  margin-top: 4px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.chart-panel-actions .chart-panel-date-range {
+  margin-top: 0;
+  flex: 0 1 360px;
+}
+
+.chart-panel-date-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--panel-accent);
+  white-space: nowrap;
+}
+
+.chart-panel-actions .chart-action-btn {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+#refresh-btn.chart-action-btn {
+  margin-left: 16px;
+}
+
+.chart-panel-timeline {
+  min-width: 260px;
+  max-width: 320px;
+  flex: 0 0 300px;
+  margin-right: 16px;
+}
+
+.chart-panel-timeline .freq-label {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.chart-panel-timeline .chart-panel-timeline-slider {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.chart-panel-timeline .chart-panel-timeline-slider .rc-slider-mark-text {
+  font-size: 9px;
+}
+
+.chart-panel-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chart-panel-presets .preset-btn {
+  margin: 0;
+  padding: 7px 8px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.chart-panel-presets .preset-btn:first-child {
+  margin-left: 32px;
+}
+
+.chart-panel-actions .download-dataset-btn.chart-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-panel-progress {
+  margin-bottom: 10px;
+}
+
+.chart-panel-progress .refresh-status {
+  margin-top: 0;
 }
 
 .below-chart-controls {
@@ -271,6 +363,10 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fff;
+}
+
+.macro-controls-box {
+  margin-top: 12px;
 }
 
 .below-chart-controls-wrap {
@@ -285,14 +381,14 @@ body {
   margin-top: 0;
 }
 
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(1) { background: #f3e8ff; border-color: #e9d5ff; color: #2b1448; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(2) { background: #ede9fe; border-color: #ddd6fe; color: #2b1448; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(3) { background: #e9d5ff; border-color: #d8b4fe; color: #2b1448; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(4) { background: #ddd6fe; border-color: #c4b5fd; color: #2b1448; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(5) { background: #c4b5fd; border-color: #a78bfa; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(6) { background: #a78bfa; border-color: #8b5cf6; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(7) { background: #8b5cf6; border-color: #7c3aed; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(8) { background: #7c3aed; border-color: #6d28d9; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(1) { background: #be185d; border-color: #9d174d; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(2) { background: #0891b2; border-color: #0e7490; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(3) { background: #d97706; border-color: #b45309; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(4) { background: #dc2626; border-color: #b91c1c; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(5) { background: #6d28d9; border-color: #5b21b6; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(6) { background: #b45309; border-color: #92400e; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(7) { background: #0f766e; border-color: #115e59; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(8) { background: #374151; border-color: #1f2937; color: #ffffff; }
 
 .cs-baseline-dropdown {
   min-width: 84px;
@@ -425,7 +521,7 @@ body {
 }
 
 .page-title {
-  margin: 0 0 10px 0;
+  margin: 0 0 18px 0;
 }
 
 .warning-message {
