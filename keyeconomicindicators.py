@@ -90,6 +90,16 @@ VOLATILITY_HOVER_LABELS = {
     "ig_oas": "IG Corporate OAS",
     "move": "Bond Volatility",
 }
+VOLATILITY_BUTTON_LABELS = {
+    "vix": "VIX (BROAD EQUITIES)",
+    "vxn": "VXN (NASDAQ-100)",
+    "gvz": "GVZ (GOLD)",
+    "ovx": "OVX (OIL)",
+    "stlfsi": "STLFSI (FED STRESS INDEX)",
+    "hy_oas": "HY OAS (HY BOND SPREADS)",
+    "ig_oas": "IG OAS (IG BOND SPREADS)",
+    "move": "MOVE (BONDS)",
+}
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
     "download_scripts/download_inflation.py",
@@ -707,28 +717,29 @@ def build_figure(
             z_col = VOLATILITY_DATA_COLS[key]
             if not enabled or z_col not in plot_vol.columns:
                 continue
-            hover_label = VOLATILITY_HOVER_LABELS.get(key, key)
+            display_label = VOLATILITY_BUTTON_LABELS.get(key, key.upper())
             vol_series = pd.Series(
                 pd.to_numeric(plot_vol[z_col], errors="coerce").values,
                 index=pd.to_datetime(plot_vol["DATE"], errors="coerce"),
             ).sort_index()
             if selected_median_mode == "3y":
-                vol_median = vol_series.rolling("1096D", min_periods=1).median()
-                median_name = f"{key} 3Y MEDIAN"
-                median_hover = f"{hover_label} 3Y Median"
+                rolling_window = "1096D"
+                window_label = "3Y"
             else:
-                vol_median = vol_series.rolling("3652D", min_periods=1).median()
-                median_name = f"{key} 10Y MEDIAN"
-                median_hover = f"{hover_label} 10Y Median"
+                rolling_window = "3652D"
+                window_label = "10Y"
+            vol_median = vol_series.rolling(rolling_window, min_periods=1).median()
+            median_name = f"{display_label} {window_label} MEDIAN"
+            median_hover = f"{display_label} {window_label} Median"
             fig.add_trace(
                 go.Scatter(
                     x=vol_series.index,
                     y=vol_series.values,
-                    name=key,
+                    name=display_label,
                     mode="lines",
                     line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
                     yaxis="y2",
-                    hovertemplate=f"{hover_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    hovertemplate=f"{display_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
             fig.add_trace(
@@ -743,61 +754,61 @@ def build_figure(
                 )
             )
             if selected_band_mode == "10_90":
-                vol_p10_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.10)
-                vol_p90_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.90)
+                vol_p10 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.10)
+                vol_p90 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.90)
                 fig.add_trace(
                     go.Scatter(
-                        x=vol_p10_10y.index,
-                        y=vol_p10_10y.values,
-                        name=f"{key} 10Y P10",
+                        x=vol_p10.index,
+                        y=vol_p10.values,
+                        name=f"{display_label} {window_label} P10",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} 10Y P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=vol_p90_10y.index,
-                        y=vol_p90_10y.values,
-                        name=f"{key} 10Y P90",
+                        x=vol_p90.index,
+                        y=vol_p90.values,
+                        name=f"{display_label} {window_label} P90",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.05)",
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} 10Y P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
             elif selected_band_mode == "25_75":
-                vol_p25_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.25)
-                vol_p75_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.75)
+                vol_p25 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.25)
+                vol_p75 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.75)
                 fig.add_trace(
                     go.Scatter(
-                        x=vol_p25_10y.index,
-                        y=vol_p25_10y.values,
-                        name=f"{key} 10Y P25",
+                        x=vol_p25.index,
+                        y=vol_p25.values,
+                        name=f"{display_label} {window_label} P25",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} 10Y P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=vol_p75_10y.index,
-                        y=vol_p75_10y.values,
-                        name=f"{key} 10Y P75",
+                        x=vol_p75.index,
+                        y=vol_p75.values,
+                        name=f"{display_label} {window_label} P75",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.08)",
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} 10Y P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
 
@@ -1188,7 +1199,7 @@ app.layout = html.Div(
                                             [
                                                 *[
                                                     html.Button(
-                                                        col,
+                                                        VOLATILITY_BUTTON_LABELS.get(col, col.upper()),
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
                                                         className="maturity-btn",
