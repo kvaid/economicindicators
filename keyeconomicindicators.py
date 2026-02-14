@@ -88,7 +88,17 @@ VOLATILITY_HOVER_LABELS = {
     "stlfsi": "Fed Financial Stress Index",
     "hy_oas": "High Yield Corporate OAS",
     "ig_oas": "IG Corporate OAS",
-    "move": "Bond Volatility",
+    "move": "MOVE Index is the bond market’s analog to VIX: it’s a market-implied measure of expected volatility in U.S. Treasury yields over the next ~30 days. It’s built from a yield-curve-weighted basket of at-the-money, 1-month options tied to key points on the Treasury curve",
+}
+VOLATILITY_BUTTON_LABELS = {
+    "vix": "VIX (S&P 500)",
+    "vxn": "VXN (NASDAQ-100)",
+    "gvz": "GVZ (GOLD)",
+    "ovx": "OVX (OIL)",
+    "stlfsi": "STLFSI4 (FED STRESS INDEX)",
+    "hy_oas": "HY OAS (HY BOND SPREADS)",
+    "ig_oas": "IG OAS (IG BOND SPREADS)",
+    "move": "MOVE (BONDS)",
 }
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
@@ -417,8 +427,8 @@ def build_figure(
         if selected_band_mode not in {"25_75", "10_90"}:
             selected_band_mode = "none"
         selected_median_mode = str(vol_median_mode or "").strip()
-        if selected_median_mode not in {"10y", "3y"}:
-            selected_median_mode = "10y"
+        if selected_median_mode not in {"none", "3y_median", "10y_median", "15y_median", "3y_mean", "10y_mean", "15y_mean"}:
+            selected_median_mode = "none"
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
@@ -693,6 +703,14 @@ def build_figure(
             )
         )
     if not plot_vol.empty:
+        vix_plotted = False
+        vxn_plotted = False
+        gvz_plotted = False
+        ovx_plotted = False
+        stlfsi_plotted = False
+        ig_oas_plotted = False
+        hy_oas_plotted = False
+        move_plotted = False
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
@@ -707,42 +725,77 @@ def build_figure(
             z_col = VOLATILITY_DATA_COLS[key]
             if not enabled or z_col not in plot_vol.columns:
                 continue
-            hover_label = VOLATILITY_HOVER_LABELS.get(key, key)
+            display_label = VOLATILITY_BUTTON_LABELS.get(key, key.upper())
             vol_series = pd.Series(
                 pd.to_numeric(plot_vol[z_col], errors="coerce").values,
                 index=pd.to_datetime(plot_vol["DATE"], errors="coerce"),
             ).sort_index()
-            if selected_median_mode == "3y":
-                rolling_window = "1096D"
-                window_label = "3Y"
-            else:
-                rolling_window = "3652D"
-                window_label = "10Y"
-            vol_median = vol_series.rolling(rolling_window, min_periods=1).median()
-            median_name = f"{key} {window_label} MEDIAN"
-            median_hover = f"{hover_label} {window_label} Median"
+            if key == "vix" and not vol_series.dropna().empty:
+                vix_plotted = True
+            if key == "vxn" and not vol_series.dropna().empty:
+                vxn_plotted = True
+            if key == "gvz" and not vol_series.dropna().empty:
+                gvz_plotted = True
+            if key == "ovx" and not vol_series.dropna().empty:
+                ovx_plotted = True
+            if key == "stlfsi" and not vol_series.dropna().empty:
+                stlfsi_plotted = True
+            if key == "ig_oas" and not vol_series.dropna().empty:
+                ig_oas_plotted = True
+            if key == "hy_oas" and not vol_series.dropna().empty:
+                hy_oas_plotted = True
+            if key == "move" and not vol_series.dropna().empty:
+                move_plotted = True
+            window_map = {
+                "3y_median": ("1096D", "3Y"),
+                "10y_median": ("3652D", "10Y"),
+                "15y_median": ("5479D", "15Y"),
+                "3y_mean": ("1096D", "3Y"),
+                "10y_mean": ("3652D", "10Y"),
+                "15y_mean": ("5479D", "15Y"),
+            }
+            rolling_window, window_label = window_map.get(selected_median_mode, ("3652D", "10Y"))
             fig.add_trace(
                 go.Scatter(
                     x=vol_series.index,
                     y=vol_series.values,
-                    name=key,
+                    name=display_label,
                     mode="lines",
                     line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
                     yaxis="y2",
-                    hovertemplate=f"{hover_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    hovertemplate=f"{display_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
-            fig.add_trace(
-                go.Scatter(
-                    x=vol_median.index,
-                    y=vol_median.values,
-                    name=median_name,
-                    mode="lines",
-                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
-                    yaxis="y2",
-                    hovertemplate=f"{median_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+            if selected_median_mode.endswith("_median"):
+                vol_overlay = vol_series.rolling(rolling_window, min_periods=1).median()
+                overlay_name = f"{display_label} {window_label} MEDIAN"
+                overlay_hover = f"{display_label} {window_label} Median"
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_overlay.index,
+                        y=vol_overlay.values,
+                        name=overlay_name,
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
+                        yaxis="y2",
+                        hovertemplate=f"{overlay_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
                 )
-            )
+            elif selected_median_mode.endswith("_mean"):
+                vol_overlay = vol_series.rolling(rolling_window, min_periods=1).mean()
+                overlay_name = f"{display_label} {window_label} AVERAGE"
+                overlay_hover = f"{display_label} {window_label} Average"
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_overlay.index,
+                        y=vol_overlay.values,
+                        name=overlay_name,
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
+                        yaxis="y2",
+                        hovertemplate=f"{overlay_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
+                )
             if selected_band_mode == "10_90":
                 vol_p10 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.10)
                 vol_p90 = vol_series.rolling(rolling_window, min_periods=1).quantile(0.90)
@@ -750,26 +803,26 @@ def build_figure(
                     go.Scatter(
                         x=vol_p10.index,
                         y=vol_p10.values,
-                        name=f"{key} {window_label} P10",
+                        name=f"{display_label} {window_label} P10",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
                         x=vol_p90.index,
                         y=vol_p90.values,
-                        name=f"{key} {window_label} P90",
+                        name=f"{display_label} {window_label} P90",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.05)",
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
             elif selected_band_mode == "25_75":
@@ -779,28 +832,276 @@ def build_figure(
                     go.Scatter(
                         x=vol_p25.index,
                         y=vol_p25.values,
-                        name=f"{key} {window_label} P25",
+                        name=f"{display_label} {window_label} P25",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
                 fig.add_trace(
                     go.Scatter(
                         x=vol_p75.index,
                         y=vol_p75.values,
-                        name=f"{key} {window_label} P75",
+                        name=f"{display_label} {window_label} P75",
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.08)",
                         yaxis="y2",
-                        hovertemplate=f"{hover_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                        hovertemplate=f"{display_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
+        if vix_plotted:
+            fig.add_hline(
+                y=15,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 15: Complacency/Low Volatility",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=30,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 30: Heightened Fear/Market Stress",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if vxn_plotted:
+            fig.add_hline(
+                y=20,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 20: Low fear/Complacency",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=30,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="30-40: Elevated Stress/Nervousness (sector-specific fears, earnings volatility)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=50,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 50: Significant Market Fear)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if gvz_plotted:
+            fig.add_hline(
+                y=20,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 20: Low Uncertainty/Complacency (stable prices, limited safe-haven demand)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=30,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="30-40: Elevated Stress/Nervousness (rapid gold price swings, macro surprises)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=40,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 40: Significant Fear, often during crises or sharp corrections in gold",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if ovx_plotted:
+            fig.add_hline(
+                y=35,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 35: Low Uncertainty/Complacency (stable prices, limited shocks)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=50,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="50-70: Elevated Stress/Nervousness (rapid price swings, supply disruptions)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=70,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 70: Significant Fear, often during major oil crises or sharp corrections",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if stlfsi_plotted:
+            fig.add_hline(
+                y=-0.5,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below -0.5: Low Stress/Complacency (stable spreads, low volatility, supportive conditions)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=0.5,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="0.5 to 2: Elevated Stress/Nervousness (widening spreads, rising volatility)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=3,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 3: Significant Systemic Fear, often during major crises",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+            fig.add_hline(
+                y=0,
+                yref="y2",
+                line_dash="dash",
+                line_color="#6B7280",
+                line_width=1.2,
+                annotation_text="Average/Normal Financial Market Stress",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#4B5563"},
+            )
+        if ig_oas_plotted:
+            fig.add_hline(
+                y=0.8,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 1.0: Low Credit Risk/Complacency (tight spreads, strong investor demand for corporates, stable economy)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=1.5,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="1.5-2.0: Elevated Stress/Nervousness(widening due to recession fears, inflation surprises, or liquidity issues)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=3,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 3.0: Significant Credit Fear, often during crises or sharp economic downturns",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if hy_oas_plotted:
+            fig.add_hline(
+                y=3,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 3.0: Low Credit Risk/Complacency (tight spreads, high demand for yield, stable economy, low defaults)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=6,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="6.0-8.0: Elevated Stress/Nervousness (widening due to recession fears, liquidity issues, or sector problems)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=10,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 10.0: Significant Credit Fear, often during crises or sharp economic downturns",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if move_plotted:
+            fig.add_hline(
+                y=75,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 70-80: Low Uncertainty/Complacency (Stable Rate Outlooks)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=110,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="100-120+: Elevated Uncertainty (Fed policy, Inflation)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=140,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 140: Significant Stress (Rapid Yield Swings)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
 
     fig.update_layout(
         template="plotly_white",
@@ -1158,45 +1459,135 @@ app.layout = html.Div(
                             [
                                 html.Div(
                                     [
-                                        html.Div("Volatility Indicators", className="row-tag"),
-                                        dcc.Dropdown(
-                                            id="vol-band-select",
-                                            options=[
-                                                {"label": "Select band", "value": "none"},
-                                                {"label": "Elevated: x > p75", "value": "25_75"},
-                                                {"label": "Stress: x > p90", "value": "10_90"},
+                                        html.Div("Volatility", className="row-tag"),
+                                        html.Div(
+                                            [
+                                                dcc.Dropdown(
+                                                    id="vol-band-select",
+                                                    options=[
+                                                        {"label": "Select band", "value": "none"},
+                                                        {"label": "25/75 (Elevated)", "value": "25_75"},
+                                                        {"label": "10/90 (Stress)", "value": "10_90"},
+                                                    ],
+                                                    value="none",
+                                                    placeholder="Percentile bands",
+                                                    clearable=False,
+                                                    searchable=False,
+                                                    persistence=False,
+                                                    className="vol-band-dropdown",
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="vol-median-select",
+                                                    options=[
+                                                        {"label": "No overlay", "value": "none"},
+                                                        {"label": "3Y median overlay", "value": "3y_median"},
+                                                        {"label": "10Y median overlay", "value": "10y_median"},
+                                                        {"label": "15Y median overlay", "value": "15y_median"},
+                                                        {"label": "3Y average overlay", "value": "3y_mean"},
+                                                        {"label": "10Y average overlay", "value": "10y_mean"},
+                                                        {"label": "15Y average overlay", "value": "15y_mean"},
+                                                    ],
+                                                    value="none",
+                                                    clearable=False,
+                                                    searchable=False,
+                                                    persistence=False,
+                                                    className="vol-median-dropdown",
+                                                ),
                                             ],
-                                            value="none",
-                                            placeholder="Percentile bands",
-                                            clearable=False,
-                                            searchable=False,
-                                            persistence=False,
-                                            className="vol-band-dropdown",
-                                        ),
-                                        dcc.Dropdown(
-                                            id="vol-median-select",
-                                            options=[
-                                                {"label": "10Y median overlay", "value": "10y"},
-                                                {"label": "3Y median overlay", "value": "3y"},
-                                            ],
-                                            value="10y",
-                                            clearable=False,
-                                            searchable=False,
-                                            persistence=False,
-                                            className="vol-median-dropdown",
+                                            className="vol-dropdown-stack",
                                         ),
                                         html.Div(
                                             [
                                                 *[
                                                     html.Button(
-                                                        col,
+                                                        VOLATILITY_BUTTON_LABELS.get(col, col),
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
                                                         className="maturity-btn",
                                                         title=VOLATILITY_HOVER_LABELS.get(col, col),
                                                     )
-                                                    for col in VOLATILITY_COLS
+                                                    for col in ["vix", "vxn"]
                                                 ],
+                                                html.Button(
+                                                    "RVX (Russell 2000)",
+                                                    id="vol-extra-rvx-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="VIX of small-caps, measures expected 30-day volatility in the Russell 2000 Index (small-cap U.S. stocks) based on options prices for the RUT (Russell 2000 Index futures/options)",
+                                                ),
+                                                html.Button(
+                                                    "VXEEM (MSCI EM)",
+                                                    id="vol-extra-vxeem-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="Primary gauge for emerging markets volatility. It estimates expected 30-day volatility of returns on the MSCI Emerging Markets Index (via options on the iShares MSCI Emerging Markets ETF, ticker EEM",
+                                                ),
+                                                html.Button(
+                                                    "VXHYG (HY BOND ETF)",
+                                                    id="vol-extra-vxhyg-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="VIX of high-yield bonds. measures expected 30-day implied volatility of returns on the iShares iBoxx $ High Yield Corporate Bond ETF (HYG), which tracks a broad basket of U.S. high-yield corporate bonds (including significant Single-B exposure)",
+                                                ),
+                                                *[
+                                                    html.Button(
+                                                        VOLATILITY_BUTTON_LABELS.get(col, col),
+                                                        id=f"vol-{col}-btn",
+                                                        n_clicks=0,
+                                                        className="maturity-btn",
+                                                        title=VOLATILITY_HOVER_LABELS.get(col, col),
+                                                    )
+                                                    for col in ["move", "ig_oas", "hy_oas"]
+                                                ],
+                                                html.Button(
+                                                    "VVIX (VOL OF VOL)",
+                                                    id="vol-extra-vvix-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="High VVIX signals the market thinks volatility could jump around aggressively which is typical when positioning is fragile or the market is prone to feedback loops",
+                                                ),
+                                                html.Button(
+                                                    "SKEW (TAIL PRICING)",
+                                                    id="vol-extra-skew-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="SKEW measures how expensive far OOM put options are relative to NTM options on S&P 500. SKEW rises when investors fear (or hedge) for black swan events",
+                                                ),
+                                                html.Button(
+                                                    VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi"),
+                                                    id="vol-stlfsi-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title=VOLATILITY_HOVER_LABELS.get("stlfsi", "stlfsi"),
+                                                ),
+                                                html.Button(
+                                                    "OFR FSI (STRESS INDEX)",
+                                                    id="vol-extra-fsi-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="Composite, multi-market stress gauge (credit, equity valuation, funding, safe assets, volatility). From Office of Financial Research",
+                                                ),
+                                                html.Button(
+                                                    VOLATILITY_BUTTON_LABELS.get("gvz", "gvz"),
+                                                    id="vol-gvz-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title=VOLATILITY_HOVER_LABELS.get("gvz", "gvz"),
+                                                ),
+                                                html.Button(
+                                                    VOLATILITY_BUTTON_LABELS.get("ovx", "ovx"),
+                                                    id="vol-ovx-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title=VOLATILITY_HOVER_LABELS.get("ovx", "ovx"),
+                                                ),
+                                                html.Button(
+                                                    "DXY (US DOLLAR)",
+                                                    id="vol-extra-dxy-btn",
+                                                    n_clicks=0,
+                                                    className="maturity-btn",
+                                                    title="Measures the value of the USD relative to a basket of euro (57.6% weight), Japanese yen (13.6%), British pound (11.9%), Canadian dollar (9.1%), Swedish krona (4.2%), and Swiss franc (3.6%). It serves as a broad gauge of USD strength/weakness in global FX markets, often inversely correlated with equity/commodity assets",
+                                                ),
                                             ],
                                             className="spread-grid",
                                         ),
@@ -1223,6 +1614,14 @@ app.layout = html.Div(
     Output("timeline-slider", "value"),
     Output("active-preset", "data"),
     [Input(f"preset-{p}", "n_clicks") for p in PRESETS],
+    Input("vol-vix-btn", "n_clicks"),
+    Input("vol-vxn-btn", "n_clicks"),
+    Input("vol-gvz-btn", "n_clicks"),
+    Input("vol-ovx-btn", "n_clicks"),
+    Input("vol-stlfsi-btn", "n_clicks"),
+    Input("vol-hy_oas-btn", "n_clicks"),
+    Input("vol-ig_oas-btn", "n_clicks"),
+    Input("vol-move-btn", "n_clicks"),
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("timeline-slider", "value"),
@@ -1239,6 +1638,15 @@ def apply_preset(*args):
 
     if str(trigger).startswith("preset-"):
         preset = str(trigger).replace("preset-", "")
+        start_date, end_date = compute_preset_range(preset, timeline_min_dt, max_dt)
+        slider_value = [
+            date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+            date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+        ]
+        return start_date, end_date, slider_value, preset
+
+    if str(trigger).startswith("vol-") and str(trigger).endswith("-btn"):
+        preset = "10Y"
         start_date, end_date = compute_preset_range(preset, timeline_min_dt, max_dt)
         slider_value = [
             date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
@@ -1758,118 +2166,115 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     return new_state, cls, style
 
 
-def _toggle_volatility_button(current_state: bool, series_key: str) -> tuple[bool, str, dict]:
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    color = VOLATILITY_BUTTON_COLORS[series_key]
-    style = (
-        {
-            "background": color,
-            "backgroundColor": color,
-            "backgroundImage": "none",
-            "borderColor": color,
-            "color": "#FFFFFF",
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
 @app.callback(
     Output("show-vol-vix-state", "data"),
-    Output("vol-vix-btn", "className"),
-    Output("vol-vix-btn", "style"),
-    Input("vol-vix-btn", "n_clicks"),
-    State("show-vol-vix-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_vix_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "vix")
-
-
-@app.callback(
     Output("show-vol-vxn-state", "data"),
-    Output("vol-vxn-btn", "className"),
-    Output("vol-vxn-btn", "style"),
-    Input("vol-vxn-btn", "n_clicks"),
-    State("show-vol-vxn-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_vxn_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "vxn")
-
-
-@app.callback(
     Output("show-vol-gvz-state", "data"),
-    Output("vol-gvz-btn", "className"),
-    Output("vol-gvz-btn", "style"),
-    Input("vol-gvz-btn", "n_clicks"),
-    State("show-vol-gvz-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_gvz_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "gvz")
-
-
-@app.callback(
     Output("show-vol-ovx-state", "data"),
-    Output("vol-ovx-btn", "className"),
-    Output("vol-ovx-btn", "style"),
-    Input("vol-ovx-btn", "n_clicks"),
-    State("show-vol-ovx-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_ovx_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "ovx")
-
-
-@app.callback(
     Output("show-vol-stlfsi-state", "data"),
-    Output("vol-stlfsi-btn", "className"),
-    Output("vol-stlfsi-btn", "style"),
-    Input("vol-stlfsi-btn", "n_clicks"),
-    State("show-vol-stlfsi-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_stlfsi_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "stlfsi")
-
-
-@app.callback(
     Output("show-vol-hy_oas-state", "data"),
-    Output("vol-hy_oas-btn", "className"),
-    Output("vol-hy_oas-btn", "style"),
-    Input("vol-hy_oas-btn", "n_clicks"),
-    State("show-vol-hy_oas-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_hy_oas_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "hy_oas")
-
-
-@app.callback(
     Output("show-vol-ig_oas-state", "data"),
-    Output("vol-ig_oas-btn", "className"),
-    Output("vol-ig_oas-btn", "style"),
-    Input("vol-ig_oas-btn", "n_clicks"),
-    State("show-vol-ig_oas-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_vol_ig_oas_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "ig_oas")
-
-
-@app.callback(
     Output("show-vol-move-state", "data"),
+    Output("vol-vix-btn", "className"),
+    Output("vol-vxn-btn", "className"),
+    Output("vol-gvz-btn", "className"),
+    Output("vol-ovx-btn", "className"),
+    Output("vol-stlfsi-btn", "className"),
+    Output("vol-hy_oas-btn", "className"),
+    Output("vol-ig_oas-btn", "className"),
     Output("vol-move-btn", "className"),
+    Output("vol-vix-btn", "style"),
+    Output("vol-vxn-btn", "style"),
+    Output("vol-gvz-btn", "style"),
+    Output("vol-ovx-btn", "style"),
+    Output("vol-stlfsi-btn", "style"),
+    Output("vol-hy_oas-btn", "style"),
+    Output("vol-ig_oas-btn", "style"),
     Output("vol-move-btn", "style"),
+    Input("vol-vix-btn", "n_clicks"),
+    Input("vol-vxn-btn", "n_clicks"),
+    Input("vol-gvz-btn", "n_clicks"),
+    Input("vol-ovx-btn", "n_clicks"),
+    Input("vol-stlfsi-btn", "n_clicks"),
+    Input("vol-hy_oas-btn", "n_clicks"),
+    Input("vol-ig_oas-btn", "n_clicks"),
     Input("vol-move-btn", "n_clicks"),
+    State("show-vol-vix-state", "data"),
+    State("show-vol-vxn-state", "data"),
+    State("show-vol-gvz-state", "data"),
+    State("show-vol-ovx-state", "data"),
+    State("show-vol-stlfsi-state", "data"),
+    State("show-vol-hy_oas-state", "data"),
+    State("show-vol-ig_oas-state", "data"),
     State("show-vol-move-state", "data"),
     prevent_initial_call=True,
 )
-def toggle_vol_move_button(_n_clicks: int, current_state: bool):
-    return _toggle_volatility_button(current_state, "move")
+def toggle_volatility_buttons(
+    _vix_clicks: int,
+    _vxn_clicks: int,
+    _gvz_clicks: int,
+    _ovx_clicks: int,
+    _stlfsi_clicks: int,
+    _hy_oas_clicks: int,
+    _ig_oas_clicks: int,
+    _move_clicks: int,
+    show_vol_vix_state: bool,
+    show_vol_vxn_state: bool,
+    show_vol_gvz_state: bool,
+    show_vol_ovx_state: bool,
+    show_vol_stlfsi_state: bool,
+    show_vol_hy_oas_state: bool,
+    show_vol_ig_oas_state: bool,
+    show_vol_move_state: bool,
+):
+    key_order = ["vix", "vxn", "gvz", "ovx", "stlfsi", "hy_oas", "ig_oas", "move"]
+    id_to_key = {f"vol-{k}-btn": k for k in key_order}
+    current = {
+        "vix": bool(show_vol_vix_state),
+        "vxn": bool(show_vol_vxn_state),
+        "gvz": bool(show_vol_gvz_state),
+        "ovx": bool(show_vol_ovx_state),
+        "stlfsi": bool(show_vol_stlfsi_state),
+        "hy_oas": bool(show_vol_hy_oas_state),
+        "ig_oas": bool(show_vol_ig_oas_state),
+        "move": bool(show_vol_move_state),
+    }
+
+    trigger = callback_context.triggered_id
+    clicked_key = id_to_key.get(str(trigger), "")
+    if not clicked_key:
+        return no_update
+
+    # Single-select behavior: selecting a new button deselects any previously selected one.
+    # Clicking the currently selected button toggles the selection off.
+    if current.get(clicked_key, False) and sum(current.values()) == 1:
+        active_key = ""
+    else:
+        active_key = clicked_key
+
+    new_states = {k: (k == active_key) for k in key_order}
+
+    classes = []
+    styles = []
+    for key in key_order:
+        is_active = new_states[key]
+        classes.append("maturity-btn maturity-btn-active" if is_active else "maturity-btn")
+        if is_active:
+            color = VOLATILITY_BUTTON_COLORS[key]
+            styles.append(
+                {
+                    "background": color,
+                    "backgroundColor": color,
+                    "backgroundImage": "none",
+                    "borderColor": color,
+                    "color": "#FFFFFF",
+                }
+            )
+        else:
+            styles.append({})
+
+    state_values = [new_states[k] for k in key_order]
+    return tuple(state_values + classes + styles)
 
 
 @app.callback(
