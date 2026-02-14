@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import threading
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -94,6 +95,7 @@ REFRESH_SCRIPTS = [
     "download_scripts/download_inflation.py",
     "download_scripts/download_treasury_data.py",
     "download_scripts/download_bond_yields.py",
+    "download_scripts/download_volatility.py",
     "download_scripts/download_unemployment.py",
 ]
 
@@ -202,12 +204,31 @@ def start_refresh_worker() -> bool:
     return True
 
 
+def run_startup_refresh() -> None:
+    for script in REFRESH_SCRIPTS:
+        try:
+            subprocess.run(
+                [sys.executable, str(BASE_DIR / script)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            err_lines = (exc.stderr or exc.stdout or str(exc)).strip().splitlines()
+            summary = err_lines[-1] if err_lines else str(exc)
+            print(f"[startup refresh] Error in {script}: {summary}", file=sys.stderr)
+
+
+if __name__ == "__main__" and os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    run_startup_refresh()
+
+
 def get_date_bounds() -> tuple[pd.Timestamp, pd.Timestamp]:
     ust_df = load_and_process_csv("data/ust.csv")
+    today = pd.Timestamp.today().normalize()
     if ust_df.empty:
-        now = pd.Timestamp.today().normalize()
-        return now, now
-    return ust_df["DATE"].min(), ust_df["DATE"].max()
+        return today, today
+    return ust_df["DATE"].min(), max(ust_df["DATE"].max(), today)
 
 
 def compute_preset_range(preset: str, min_date: pd.Timestamp, max_date: pd.Timestamp) -> tuple[str, str]:
@@ -299,6 +320,8 @@ def build_figure(
     show_vol_hy_oas: bool,
     show_vol_ig_oas: bool,
     show_vol_move: bool,
+    vol_band_mode: str | None,
+    vol_median_mode: str | None,
 ) -> go.Figure:
     all_vals: list[float] = []
     baseline_tenor = cs_baseline_tenor if cs_baseline_tenor in SERIES else "10Y"
@@ -390,6 +413,12 @@ def build_figure(
     if show_fed_rate and not plot_fed.empty:
         all_vals.extend(plot_fed["FED_RATE"].dropna().tolist())
     if not plot_vol.empty:
+        selected_band_mode = str(vol_band_mode or "").strip()
+        if selected_band_mode not in {"25_75", "10_90"}:
+            selected_band_mode = "none"
+        selected_median_mode = str(vol_median_mode or "").strip()
+        if selected_median_mode not in {"10y", "3y"}:
+            selected_median_mode = "10y"
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
@@ -683,7 +712,14 @@ def build_figure(
                 pd.to_numeric(plot_vol[z_col], errors="coerce").values,
                 index=pd.to_datetime(plot_vol["DATE"], errors="coerce"),
             ).sort_index()
-            vol_ma_10y = vol_series.rolling("3652D", min_periods=1).mean()
+            if selected_median_mode == "3y":
+                vol_median = vol_series.rolling("1096D", min_periods=1).median()
+                median_name = f"{key} 3Y MEDIAN"
+                median_hover = f"{hover_label} 3Y Median"
+            else:
+                vol_median = vol_series.rolling("3652D", min_periods=1).median()
+                median_name = f"{key} 10Y MEDIAN"
+                median_hover = f"{hover_label} 10Y Median"
             fig.add_trace(
                 go.Scatter(
                     x=vol_series.index,
@@ -697,15 +733,73 @@ def build_figure(
             )
             fig.add_trace(
                 go.Scatter(
-                    x=vol_ma_10y.index,
-                    y=vol_ma_10y.values,
-                    name=f"{key} 10Y AVG",
+                    x=vol_median.index,
+                    y=vol_median.values,
+                    name=median_name,
                     mode="lines",
-                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.6, "dash": "dot"},
+                    line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
                     yaxis="y2",
-                    hovertemplate=f"{hover_label} 10Y Avg<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    hovertemplate=f"{median_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
+            if selected_band_mode == "10_90":
+                vol_p10_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.10)
+                vol_p90_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.90)
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_p10_10y.index,
+                        y=vol_p10_10y.values,
+                        name=f"{key} 10Y P10",
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
+                        opacity=0.45,
+                        yaxis="y2",
+                        hovertemplate=f"{hover_label} 10Y P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_p90_10y.index,
+                        y=vol_p90_10y.values,
+                        name=f"{key} 10Y P90",
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
+                        opacity=0.45,
+                        fill="tonexty",
+                        fillcolor="rgba(15, 23, 42, 0.05)",
+                        yaxis="y2",
+                        hovertemplate=f"{hover_label} 10Y P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
+                )
+            elif selected_band_mode == "25_75":
+                vol_p25_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.25)
+                vol_p75_10y = vol_series.rolling("3652D", min_periods=1).quantile(0.75)
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_p25_10y.index,
+                        y=vol_p25_10y.values,
+                        name=f"{key} 10Y P25",
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
+                        opacity=0.55,
+                        yaxis="y2",
+                        hovertemplate=f"{hover_label} 10Y P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=vol_p75_10y.index,
+                        y=vol_p75_10y.values,
+                        name=f"{key} 10Y P75",
+                        mode="lines",
+                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
+                        opacity=0.55,
+                        fill="tonexty",
+                        fillcolor="rgba(15, 23, 42, 0.08)",
+                        yaxis="y2",
+                        hovertemplate=f"{hover_label} 10Y P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
+                    )
+                )
 
     fig.update_layout(
         template="plotly_white",
@@ -817,11 +911,13 @@ def indicator_card(label: str, value: float | None) -> html.Div:
 
 min_dt, max_dt = get_date_bounds()
 timeline_min_dt = max(min_dt, pd.to_datetime("2000-01-01"))
-default_start = max(timeline_min_dt, pd.to_datetime("2023-01-01"))
+default_start_str, default_end_str = compute_preset_range("5Y", timeline_min_dt, max_dt)
+default_start = pd.to_datetime(default_start_str)
+default_end = pd.to_datetime(default_end_str)
 timeline_total_days = max((max_dt - timeline_min_dt).days, 1)
 default_slider_range = [
     date_to_timeline_idx(default_start, timeline_min_dt, max_dt),
-    timeline_total_days,
+    date_to_timeline_idx(default_end, timeline_min_dt, max_dt),
 ]
 timeline_marks = build_timeline_marks(timeline_min_dt, max_dt)
 dataset_range_text = f"Downloaded range: {min_dt.strftime('%b-%Y')} to {max_dt.strftime('%b-%Y')}"
@@ -844,7 +940,7 @@ def chart_dataset_csv():
 app.layout = html.Div(
     [
         dcc.Store(id="refresh-token", data=0),
-        dcc.Store(id="active-preset", data=None),
+        dcc.Store(id="active-preset", data="5Y"),
         dcc.Store(id="selected-maturities", data=["10Y"]),
         dcc.Store(id="show-spread-state", data=False),
         dcc.Store(id="show-us-ig-corp-state", data=False),
@@ -894,7 +990,7 @@ app.layout = html.Div(
                                     id="end-date",
                                     min_date_allowed=timeline_min_dt.date(),
                                     max_date_allowed=max_dt.date(),
-                                    date=max_dt.date(),
+                                    date=default_end.date(),
                                     display_format="YYYY-MM-DD",
                                     className="date-single",
                                 ),
@@ -1062,6 +1158,32 @@ app.layout = html.Div(
                                 html.Div(
                                     [
                                         html.Div("Volatility Indicators", className="row-tag"),
+                                        dcc.Dropdown(
+                                            id="vol-band-select",
+                                            options=[
+                                                {"label": "Select band", "value": "none"},
+                                                {"label": "Elevated: x > p75", "value": "25_75"},
+                                                {"label": "Stress: x > p90", "value": "10_90"},
+                                            ],
+                                            value="none",
+                                            placeholder="Percentile bands",
+                                            clearable=False,
+                                            searchable=False,
+                                            persistence=False,
+                                            className="vol-band-dropdown",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="vol-median-select",
+                                            options=[
+                                                {"label": "10Y median overlay", "value": "10y"},
+                                                {"label": "3Y median overlay", "value": "3y"},
+                                            ],
+                                            value="10y",
+                                            clearable=False,
+                                            searchable=False,
+                                            persistence=False,
+                                            className="vol-median-dropdown",
+                                        ),
                                         html.Div(
                                             [
                                                 *[
@@ -1818,6 +1940,8 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-vol-hy_oas-state", "data"),
     Input("show-vol-ig_oas-state", "data"),
     Input("show-vol-move-state", "data"),
+    Input("vol-band-select", "value"),
+    Input("vol-median-select", "value"),
     Input("cs-baseline-tenor", "value"),
     Input("show-fed-rate", "value"),
     Input("show-inflation", "value"),
@@ -1855,6 +1979,8 @@ def update_visuals(
     show_vol_hy_oas_state,
     show_vol_ig_oas_state,
     show_vol_move_state,
+    vol_band_mode,
+    vol_median_mode,
     cs_baseline_tenor,
     show_fed_rate_val,
     show_inflation_val,
@@ -1957,11 +2083,21 @@ def update_visuals(
         for z_col in VOLATILITY_DATA_COLS.values():
             if z_col in vol_df.columns:
                 vol_df[z_col] = pd.to_numeric(vol_df[z_col], errors="coerce")
+        vol_cols = [c for c in VOLATILITY_DATA_COLS.values() if c in vol_df.columns]
+        vol_resampled = (
+            vol_df[["DATE"] + vol_cols]
+            .set_index("DATE")
+            .resample("W")
+            .mean()
+            .dropna(how="all")
+            .reset_index()
+        )
     else:
         vol_df = pd.DataFrame()
+        vol_resampled = pd.DataFrame()
 
     min_date = max(ust_df["DATE"].min().date(), pd.to_datetime("2000-01-01").date())
-    max_date = ust_df["DATE"].max().date()
+    max_date = max(ust_df["DATE"].max().date(), pd.Timestamp.today().normalize().date())
 
     start_date = pd.to_datetime(start_date_str).date() if start_date_str else max(min_date, pd.to_datetime("2020-01-01").date())
     end_date = pd.to_datetime(end_date_str).date() if end_date_str else max_date
@@ -2006,22 +2142,9 @@ def update_visuals(
             )
         else:
             bond_resampled = pd.DataFrame()
-        if not vol_df.empty:
-            vol_cols = [c for c in VOLATILITY_DATA_COLS.values() if c in vol_df.columns]
-            vol_resampled = (
-                vol_df[["DATE"] + vol_cols]
-                .set_index("DATE")
-                .resample(freq)
-                .mean()
-                .dropna(how="all")
-                .reset_index()
-            )
-        else:
-            vol_resampled = pd.DataFrame()
     else:
         ust_resampled = ust_df
         bond_resampled = bond_yields_df
-        vol_resampled = vol_df
 
     plot_ust = filter_by_date(ust_resampled, start_date, end_date)
     plot_ust["SPREAD_10Y_2Y"] = plot_ust["BC_10YEAR"] - plot_ust["BC_2YEAR"]
@@ -2082,7 +2205,10 @@ def update_visuals(
         show_vol_hy_oas=show_vol_hy_oas,
         show_vol_ig_oas=show_vol_ig_oas,
         show_vol_move=show_vol_move,
+        vol_band_mode=vol_band_mode,
+        vol_median_mode=vol_median_mode,
     )
+    fig.update_xaxes(range=[start_date.isoformat(), end_date.isoformat()])
 
     export_series: list[tuple[str, pd.Series]] = []
 
