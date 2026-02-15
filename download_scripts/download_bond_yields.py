@@ -11,7 +11,7 @@ import yfinance as yf
 from fredapi import Fred
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = BASE_DIR.parent / "data"
 OUTPUT_FILE = DATA_DIR / "bondyields.csv"
 ERROR_FILE = DATA_DIR / "bond_download_errors.csv"
 

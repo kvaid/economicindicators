@@ -9,7 +9,7 @@ import pandas as pd
 from fredapi import Fred
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = BASE_DIR.parent / "data"
 OUTPUT_FILE = DATA_DIR / "fedrate.csv"
 TARGET_SERIES_CUTOFF = pd.Timestamp("2008-12-16")
 FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"

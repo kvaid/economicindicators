@@ -3,13 +3,13 @@ download_volatility.py
 
 Downloads cross-asset volatility / stress indicators (2007+) from:
 - FRED (macro/credit/vol indices + yields)
-- Yahoo Finance via yfinance (MOVE, SKEW, VVIX)
+- Yahoo Finance via yfinance (MOVE, SKEW)
 
 Outputs:
 - data/volatility.csv
 
 Install:
-  pip install pandas fredapi yfinance requests
+  pip install pandas fredapi yfinance
 """
 
 from __future__ import annotations
@@ -31,13 +31,17 @@ END_DATE = None  # None => today
 BASE_DIR = Path(__file__).resolve().parent
 OUT_DIR = BASE_DIR.parent / "data"
 OUT_CSV_COMBINED = OUT_DIR / "volatility.csv"
+CACHE_DIR = BASE_DIR.parent / ".cache" / "yfinance"
 FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
 ROUND_DIGITS = 2
-Z_SCORE_WINDOW = 90
 VOLATILITY_OUTPUT_ORDER = [
     "vix",
     "vxn",
+    "rvx",
+    "vxeem",
+    "skew",
     "move",
+    "dxy",
     "ig_oas",
     "hy_oas",
     "gvz",
@@ -54,6 +58,8 @@ FRED_SERIES: Dict[str, str] = {
     # Equity implied vol
     "vix": "VIXCLS",
     "vxn": "VXNCLS",
+    "rvx": "RVXCLS",
+    "vxeem": "VXEEMCLS",
 
     # Commodity implied vol
     "gvz": "GVZCLS",   # gold vol index
@@ -74,6 +80,8 @@ FRED_SERIES: Dict[str, str] = {
 # -----------------------------
 YF_TICKERS: Dict[str, str] = {
     "move": "^MOVE",
+    "skew": "^SKEW",
+    "dxy": "DX-Y.NYB",
 }
 
 
@@ -83,6 +91,14 @@ YF_TICKERS: Dict[str, str] = {
 
 def _ensure_out_dir(path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+
+def _configure_yfinance_cache(cache_dir: Path) -> None:
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        yf.set_tz_cache_location(str(cache_dir))
+    except Exception as exc:
+        print(f"[WARN] Could not set yfinance cache location: {exc}")
 
 
 def fetch_fred_series(series_map: Dict[str, str],
@@ -95,11 +111,15 @@ def fetch_fred_series(series_map: Dict[str, str],
     frames: list[pd.DataFrame] = []
 
     for out_col, series_id in series_map.items():
-        series = fred_client.get_series(
-            series_id,
-            observation_start=start,
-            observation_end=end,
-        )
+        try:
+            series = fred_client.get_series(
+                series_id,
+                observation_start=start,
+                observation_end=end,
+            )
+        except Exception as exc:
+            print(f"[WARN] Skipping FRED series {series_id} ({out_col}): {exc}")
+            continue
         if series is None or series.empty:
             continue
         df = series.rename(out_col).to_frame()
@@ -129,6 +149,7 @@ def fetch_yfinance_close(ticker_map: Dict[str, str],
         actions=False,
         progress=False,
         group_by="column",
+        threads=False,
     )
 
     # yfinance structure differs for single vs multi ticker.
@@ -162,19 +183,6 @@ def add_curve_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_rolling_zscore_dataset(df: pd.DataFrame, window: int = Z_SCORE_WINDOW) -> pd.DataFrame:
-    out = df.copy()
-    numeric_cols = out.select_dtypes(include="number").columns
-    for col in numeric_cols:
-        series = pd.to_numeric(out[col], errors="coerce")
-        valid = series.dropna()
-        roll_mean = valid.rolling(window=window, min_periods=window).mean()
-        roll_std = valid.rolling(window=window, min_periods=window).std()
-        z_valid = (valid - roll_mean) / roll_std.replace(0, pd.NA)
-        out[col] = z_valid.reindex(series.index)
-    return out
-
-
 # -----------------------------
 # Optional OFR FSI stub
 # -----------------------------
@@ -200,7 +208,7 @@ def build_indicator_dataset(start: str = START_DATE,
     # 1) FRED
     fred = fetch_fred_series(FRED_SERIES, start, end)
 
-    # 2) Yahoo Finance indices (MOVE/SKEW/VVIX)
+    # 2) Yahoo Finance indices (MOVE/SKEW/DXY)
     yf_idx = fetch_yfinance_close(YF_TICKERS, start, end)
 
     # 3) Optional OFR (stub)
@@ -221,34 +229,21 @@ def build_indicator_dataset(start: str = START_DATE,
 
 def main() -> None:
     _ensure_out_dir(OUT_CSV_COMBINED)
+    _configure_yfinance_cache(CACHE_DIR)
 
     df_original = build_indicator_dataset()
     ordered_original_cols = [c for c in VOLATILITY_OUTPUT_ORDER if c in df_original.columns]
     remaining_original_cols = [c for c in df_original.columns if c not in ordered_original_cols]
     df_original = df_original[ordered_original_cols + remaining_original_cols]
-    df_zscore = build_rolling_zscore_dataset(df_original, window=Z_SCORE_WINDOW)
 
     numeric_cols_original = df_original.select_dtypes(include="number").columns
     if len(numeric_cols_original) > 0:
         df_original.loc[:, numeric_cols_original] = df_original.loc[:, numeric_cols_original].round(ROUND_DIGITS)
 
-    numeric_cols_zscore = df_zscore.select_dtypes(include="number").columns
-    if len(numeric_cols_zscore) > 0:
-        df_zscore.loc[:, numeric_cols_zscore] = df_zscore.loc[:, numeric_cols_zscore].round(ROUND_DIGITS)
-
-    df_combined = pd.concat(
-        [
-            df_original,
-            df_zscore.add_suffix("_zscore"),
-        ],
-        axis=1,
-        sort=False,
-    )
-
     # Save
-    df_combined.to_csv(OUT_CSV_COMBINED, index_label="date")
+    df_original.to_csv(OUT_CSV_COMBINED, index_label="date")
 
-    print(f"[OK] Wrote {len(df_combined):,} rows x {df_combined.shape[1]:,} cols")
+    print(f"[OK] Wrote {len(df_original):,} rows x {df_original.shape[1]:,} cols")
     print(f"     Combined CSV: {OUT_CSV_COMBINED}")
 
 

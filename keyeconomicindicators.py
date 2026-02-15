@@ -62,43 +62,59 @@ CREDIT_SPREAD_BUTTON_COLORS = {
 VOLATILITY_COLS = [
     "vix",
     "vxn",
+    "rvx",
+    "vxeem",
+    "skew",
     "gvz",
     "ovx",
     "stlfsi",
     "hy_oas",
     "ig_oas",
     "move",
+    "dxy",
 ]
 VOLATILITY_DATA_COLS = {col: col for col in VOLATILITY_COLS}
 VOLATILITY_BUTTON_COLORS = {
     "vix": "#BE185D",
     "vxn": "#0891B2",
+    "rvx": "#0EA5E9",
+    "vxeem": "#2563EB",
+    "skew": "#7C3AED",
     "gvz": "#D97706",
     "ovx": "#DC2626",
     "stlfsi": "#6D28D9",
     "hy_oas": "#B45309",
     "ig_oas": "#0F766E",
     "move": "#374151",
+    "dxy": "#92400E",
 }
 VOLATILITY_HOVER_LABELS = {
     "vix": "VIX (Equity Volatility)",
     "vxn": "VXN (NASDAQ-100 Volatility)",
+    "rvx": "VIX of small-caps, measures expected 30-day volatility in the Russell 2000 Index (small-cap U.S. stocks) based on options prices for the RUT (Russell 2000 Index futures/options)",
+    "vxeem": "Primary gauge for emerging markets volatility. It estimates expected 30-day volatility of returns on the MSCI Emerging Markets Index (via options on the iShares MSCI Emerging Markets ETF, ticker EEM)",
+    "skew": "SKEW measures how expensive far OOM put options are relative to NTM options on S&P 500. SKEW rises when investors fear (or hedge) for black swan events",
     "gvz": "Gold Volatility",
     "ovx": "Oil Volatility",
     "stlfsi": "Fed Financial Stress Index",
     "hy_oas": "High Yield Corporate OAS",
     "ig_oas": "IG Corporate OAS",
+    "dxy": "Measures the value of the USD relative to a basket of euro (57.6% weight), Japanese yen (13.6%), British pound (11.9%), Canadian dollar (9.1%), Swedish krona (4.2%), and Swiss franc (3.6%). It serves as a broad gauge of USD strength/weakness in global FX markets, often inversely correlated with equity/commodity assets",
     "move": "MOVE Index is the bond market’s analog to VIX: it’s a market-implied measure of expected volatility in U.S. Treasury yields over the next ~30 days. It’s built from a yield-curve-weighted basket of at-the-money, 1-month options tied to key points on the Treasury curve",
 }
 VOLATILITY_BUTTON_LABELS = {
     "vix": "VIX (S&P 500)",
     "vxn": "VXN (NASDAQ-100)",
+    "rvx": "RVX (RUSSELL 2000)",
+    "vxeem": "VXEEM (MSCI EM)",
+    "skew": "SKEW (TAIL PRICING)",
     "gvz": "GVZ (GOLD)",
     "ovx": "OVX (OIL)",
     "stlfsi": "STLFSI4 (FED STRESS INDEX)",
     "hy_oas": "HY OAS (HY BOND SPREADS)",
     "ig_oas": "IG OAS (IG BOND SPREADS)",
     "move": "MOVE (BONDS)",
+    "dxy": "DXY (US DOLLAR)",
 }
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
@@ -324,12 +340,16 @@ def build_figure(
     show_unemp_ind: bool,
     show_vol_vix: bool,
     show_vol_vxn: bool,
+    show_vol_rvx: bool,
+    show_vol_vxeem: bool,
+    show_vol_skew: bool,
     show_vol_gvz: bool,
     show_vol_ovx: bool,
     show_vol_stlfsi: bool,
     show_vol_hy_oas: bool,
     show_vol_ig_oas: bool,
     show_vol_move: bool,
+    show_vol_dxy: bool,
     vol_band_mode: str | None,
     vol_median_mode: str | None,
 ) -> go.Figure:
@@ -432,12 +452,16 @@ def build_figure(
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
+            "rvx": show_vol_rvx,
+            "vxeem": show_vol_vxeem,
+            "skew": show_vol_skew,
             "gvz": show_vol_gvz,
             "ovx": show_vol_ovx,
             "stlfsi": show_vol_stlfsi,
             "hy_oas": show_vol_hy_oas,
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
+            "dxy": show_vol_dxy,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
@@ -446,9 +470,6 @@ def build_figure(
 
     if all_vals:
         v_min, v_max = min(all_vals), max(all_vals)
-        # Force zero to remain visible in all chart states.
-        v_min = min(v_min, 0.0)
-        v_max = max(v_max, 0.0)
         pad = 0.05 * (v_max - v_min) if v_max != v_min else 1.0
         y_range = [v_min - pad, v_max + pad]
     else:
@@ -705,21 +726,28 @@ def build_figure(
     if not plot_vol.empty:
         vix_plotted = False
         vxn_plotted = False
+        vxeem_plotted = False
+        skew_plotted = False
         gvz_plotted = False
         ovx_plotted = False
         stlfsi_plotted = False
         ig_oas_plotted = False
         hy_oas_plotted = False
         move_plotted = False
+        dxy_plotted = False
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
+            "rvx": show_vol_rvx,
+            "vxeem": show_vol_vxeem,
+            "skew": show_vol_skew,
             "gvz": show_vol_gvz,
             "ovx": show_vol_ovx,
             "stlfsi": show_vol_stlfsi,
             "hy_oas": show_vol_hy_oas,
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
+            "dxy": show_vol_dxy,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
@@ -734,6 +762,10 @@ def build_figure(
                 vix_plotted = True
             if key == "vxn" and not vol_series.dropna().empty:
                 vxn_plotted = True
+            if key == "vxeem" and not vol_series.dropna().empty:
+                vxeem_plotted = True
+            if key == "skew" and not vol_series.dropna().empty:
+                skew_plotted = True
             if key == "gvz" and not vol_series.dropna().empty:
                 gvz_plotted = True
             if key == "ovx" and not vol_series.dropna().empty:
@@ -746,6 +778,8 @@ def build_figure(
                 hy_oas_plotted = True
             if key == "move" and not vol_series.dropna().empty:
                 move_plotted = True
+            if key == "dxy" and not vol_series.dropna().empty:
+                dxy_plotted = True
             window_map = {
                 "3y_median": ("1096D", "3Y"),
                 "10y_median": ("3652D", "10Y"),
@@ -903,6 +937,68 @@ def build_figure(
                 line_color="#FF0000",
                 line_width=1.4,
                 annotation_text="Above 50: Significant Market Fear)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if skew_plotted:
+            fig.add_hline(
+                y=130,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 130: Low Tail-Risk Concern/Complacency (markets not overly worried about big drops)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=150,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="150-160: Elevated Nervousness about Tail risks (increased hedging demand for protection)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=160,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 160: Significant fear of outsized downside moves, often during volatile or uncertain regimes",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if vxeem_plotted:
+            fig.add_hline(
+                y=18,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 18: Low fear/Complacency (stable conditions, limited risk premiums)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=25,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="25-30: Elevated Nervousness (EM selloffs, currency crises, or commodity shocks)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=40,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 40: Significant EM fear, often during global crises or region-specific events",
                 annotation_position="top left",
                 annotation_font={"size": 11, "color": "#B91C1C"},
             )
@@ -1102,6 +1198,37 @@ def build_figure(
                 annotation_position="top left",
                 annotation_font={"size": 11, "color": "#B91C1C"},
             )
+        if dxy_plotted:
+            fig.add_hline(
+                y=90,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Below 90: USD weakness (risk-on flows, lower U.S. yields, or foreign outperformance)",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+            fig.add_hline(
+                y=100,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="100-105: USD strength/elevated (during U.S. policy divergence or risk-off)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=110,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Above 110: Significant rallies, often in crises or tightening cycles",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
 
     fig.update_layout(
         template="plotly_white",
@@ -1263,12 +1390,16 @@ app.layout = html.Div(
         dcc.Store(id="show-cs-agency-mbs-state", data=False),
         dcc.Store(id="show-vol-vix-state", data=False),
         dcc.Store(id="show-vol-vxn-state", data=False),
+        dcc.Store(id="show-vol-rvx-state", data=False),
+        dcc.Store(id="show-vol-vxeem-state", data=False),
+        dcc.Store(id="show-vol-skew-state", data=False),
         dcc.Store(id="show-vol-gvz-state", data=False),
         dcc.Store(id="show-vol-ovx-state", data=False),
         dcc.Store(id="show-vol-stlfsi-state", data=False),
         dcc.Store(id="show-vol-hy_oas-state", data=False),
         dcc.Store(id="show-vol-ig_oas-state", data=False),
         dcc.Store(id="show-vol-move-state", data=False),
+        dcc.Store(id="show-vol-dxy-state", data=False),
         dcc.Interval(id="refresh-progress-interval", interval=600, n_intervals=0, disabled=True),
         html.Div(
             [
@@ -1558,29 +1689,8 @@ app.layout = html.Div(
                                                         className="maturity-btn",
                                                         title=VOLATILITY_HOVER_LABELS.get(col, col),
                                                     )
-                                                    for col in ["vix", "vxn"]
+                                                    for col in ["vix", "vxn", "rvx", "vxeem"]
                                                 ],
-                                                html.Button(
-                                                    "RVX (Russell 2000)",
-                                                    id="vol-extra-rvx-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="VIX of small-caps, measures expected 30-day volatility in the Russell 2000 Index (small-cap U.S. stocks) based on options prices for the RUT (Russell 2000 Index futures/options)",
-                                                ),
-                                                html.Button(
-                                                    "VXEEM (MSCI EM)",
-                                                    id="vol-extra-vxeem-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="Primary gauge for emerging markets volatility. It estimates expected 30-day volatility of returns on the MSCI Emerging Markets Index (via options on the iShares MSCI Emerging Markets ETF, ticker EEM",
-                                                ),
-                                                html.Button(
-                                                    "VXHYG (HY BOND ETF)",
-                                                    id="vol-extra-vxhyg-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="VIX of high-yield bonds. measures expected 30-day implied volatility of returns on the iShares iBoxx $ High Yield Corporate Bond ETF (HYG), which tracks a broad basket of U.S. high-yield corporate bonds (including significant Single-B exposure)",
-                                                ),
                                                 *[
                                                     html.Button(
                                                         VOLATILITY_BUTTON_LABELS.get(col, col),
@@ -1589,35 +1699,14 @@ app.layout = html.Div(
                                                         className="maturity-btn",
                                                         title=VOLATILITY_HOVER_LABELS.get(col, col),
                                                     )
-                                                    for col in ["move", "ig_oas", "hy_oas"]
+                                                    for col in ["skew", "move", "ig_oas", "hy_oas", "dxy"]
                                                 ],
-                                                html.Button(
-                                                    "VVIX (VOL OF VOL)",
-                                                    id="vol-extra-vvix-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="High VVIX signals the market thinks volatility could jump around aggressively which is typical when positioning is fragile or the market is prone to feedback loops",
-                                                ),
-                                                html.Button(
-                                                    "SKEW (TAIL PRICING)",
-                                                    id="vol-extra-skew-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="SKEW measures how expensive far OOM put options are relative to NTM options on S&P 500. SKEW rises when investors fear (or hedge) for black swan events",
-                                                ),
                                                 html.Button(
                                                     VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi"),
                                                     id="vol-stlfsi-btn",
                                                     n_clicks=0,
                                                     className="maturity-btn",
                                                     title=VOLATILITY_HOVER_LABELS.get("stlfsi", "stlfsi"),
-                                                ),
-                                                html.Button(
-                                                    "OFR FSI (STRESS INDEX)",
-                                                    id="vol-extra-fsi-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="Composite, multi-market stress gauge (credit, equity valuation, funding, safe assets, volatility). From Office of Financial Research",
                                                 ),
                                                 html.Button(
                                                     VOLATILITY_BUTTON_LABELS.get("gvz", "gvz"),
@@ -1632,13 +1721,6 @@ app.layout = html.Div(
                                                     n_clicks=0,
                                                     className="maturity-btn",
                                                     title=VOLATILITY_HOVER_LABELS.get("ovx", "ovx"),
-                                                ),
-                                                html.Button(
-                                                    "DXY (US DOLLAR)",
-                                                    id="vol-extra-dxy-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title="Measures the value of the USD relative to a basket of euro (57.6% weight), Japanese yen (13.6%), British pound (11.9%), Canadian dollar (9.1%), Swedish krona (4.2%), and Swiss franc (3.6%). It serves as a broad gauge of USD strength/weakness in global FX markets, often inversely correlated with equity/commodity assets",
                                                 ),
                                             ],
                                             className="spread-grid",
@@ -1668,12 +1750,16 @@ app.layout = html.Div(
     [Input(f"preset-{p}", "n_clicks") for p in PRESETS],
     Input("vol-vix-btn", "n_clicks"),
     Input("vol-vxn-btn", "n_clicks"),
+    Input("vol-rvx-btn", "n_clicks"),
+    Input("vol-vxeem-btn", "n_clicks"),
+    Input("vol-skew-btn", "n_clicks"),
     Input("vol-gvz-btn", "n_clicks"),
     Input("vol-ovx-btn", "n_clicks"),
     Input("vol-stlfsi-btn", "n_clicks"),
     Input("vol-hy_oas-btn", "n_clicks"),
     Input("vol-ig_oas-btn", "n_clicks"),
     Input("vol-move-btn", "n_clicks"),
+    Input("vol-dxy-btn", "n_clicks"),
     Input("show-crisis-dotcom", "value"),
     Input("show-crisis-gfc", "value"),
     Input("show-crisis-eu-debt", "value"),
@@ -2286,75 +2372,107 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
 @app.callback(
     Output("show-vol-vix-state", "data"),
     Output("show-vol-vxn-state", "data"),
+    Output("show-vol-rvx-state", "data"),
+    Output("show-vol-vxeem-state", "data"),
+    Output("show-vol-skew-state", "data"),
     Output("show-vol-gvz-state", "data"),
     Output("show-vol-ovx-state", "data"),
     Output("show-vol-stlfsi-state", "data"),
     Output("show-vol-hy_oas-state", "data"),
     Output("show-vol-ig_oas-state", "data"),
     Output("show-vol-move-state", "data"),
+    Output("show-vol-dxy-state", "data"),
     Output("vol-vix-btn", "className"),
     Output("vol-vxn-btn", "className"),
+    Output("vol-rvx-btn", "className"),
+    Output("vol-vxeem-btn", "className"),
+    Output("vol-skew-btn", "className"),
     Output("vol-gvz-btn", "className"),
     Output("vol-ovx-btn", "className"),
     Output("vol-stlfsi-btn", "className"),
     Output("vol-hy_oas-btn", "className"),
     Output("vol-ig_oas-btn", "className"),
     Output("vol-move-btn", "className"),
+    Output("vol-dxy-btn", "className"),
     Output("vol-vix-btn", "style"),
     Output("vol-vxn-btn", "style"),
+    Output("vol-rvx-btn", "style"),
+    Output("vol-vxeem-btn", "style"),
+    Output("vol-skew-btn", "style"),
     Output("vol-gvz-btn", "style"),
     Output("vol-ovx-btn", "style"),
     Output("vol-stlfsi-btn", "style"),
     Output("vol-hy_oas-btn", "style"),
     Output("vol-ig_oas-btn", "style"),
     Output("vol-move-btn", "style"),
+    Output("vol-dxy-btn", "style"),
     Input("vol-vix-btn", "n_clicks"),
     Input("vol-vxn-btn", "n_clicks"),
+    Input("vol-rvx-btn", "n_clicks"),
+    Input("vol-vxeem-btn", "n_clicks"),
+    Input("vol-skew-btn", "n_clicks"),
     Input("vol-gvz-btn", "n_clicks"),
     Input("vol-ovx-btn", "n_clicks"),
     Input("vol-stlfsi-btn", "n_clicks"),
     Input("vol-hy_oas-btn", "n_clicks"),
     Input("vol-ig_oas-btn", "n_clicks"),
     Input("vol-move-btn", "n_clicks"),
+    Input("vol-dxy-btn", "n_clicks"),
     State("show-vol-vix-state", "data"),
     State("show-vol-vxn-state", "data"),
+    State("show-vol-rvx-state", "data"),
+    State("show-vol-vxeem-state", "data"),
+    State("show-vol-skew-state", "data"),
     State("show-vol-gvz-state", "data"),
     State("show-vol-ovx-state", "data"),
     State("show-vol-stlfsi-state", "data"),
     State("show-vol-hy_oas-state", "data"),
     State("show-vol-ig_oas-state", "data"),
     State("show-vol-move-state", "data"),
+    State("show-vol-dxy-state", "data"),
     prevent_initial_call=True,
 )
 def toggle_volatility_buttons(
     _vix_clicks: int,
     _vxn_clicks: int,
+    _rvx_clicks: int,
+    _vxeem_clicks: int,
+    _skew_clicks: int,
     _gvz_clicks: int,
     _ovx_clicks: int,
     _stlfsi_clicks: int,
     _hy_oas_clicks: int,
     _ig_oas_clicks: int,
     _move_clicks: int,
+    _dxy_clicks: int,
     show_vol_vix_state: bool,
     show_vol_vxn_state: bool,
+    show_vol_rvx_state: bool,
+    show_vol_vxeem_state: bool,
+    show_vol_skew_state: bool,
     show_vol_gvz_state: bool,
     show_vol_ovx_state: bool,
     show_vol_stlfsi_state: bool,
     show_vol_hy_oas_state: bool,
     show_vol_ig_oas_state: bool,
     show_vol_move_state: bool,
+    show_vol_dxy_state: bool,
 ):
-    key_order = ["vix", "vxn", "gvz", "ovx", "stlfsi", "hy_oas", "ig_oas", "move"]
+    key_order = ["vix", "vxn", "rvx", "vxeem", "skew", "gvz", "ovx", "stlfsi", "hy_oas", "ig_oas", "move", "dxy"]
     id_to_key = {f"vol-{k}-btn": k for k in key_order}
     current = {
         "vix": bool(show_vol_vix_state),
         "vxn": bool(show_vol_vxn_state),
+        "rvx": bool(show_vol_rvx_state),
+        "vxeem": bool(show_vol_vxeem_state),
+        "skew": bool(show_vol_skew_state),
         "gvz": bool(show_vol_gvz_state),
         "ovx": bool(show_vol_ovx_state),
         "stlfsi": bool(show_vol_stlfsi_state),
         "hy_oas": bool(show_vol_hy_oas_state),
         "ig_oas": bool(show_vol_ig_oas_state),
         "move": bool(show_vol_move_state),
+        "dxy": bool(show_vol_dxy_state),
     }
 
     trigger = callback_context.triggered_id
@@ -2457,12 +2575,16 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-cs-agency-mbs-state", "data"),
     Input("show-vol-vix-state", "data"),
     Input("show-vol-vxn-state", "data"),
+    Input("show-vol-rvx-state", "data"),
+    Input("show-vol-vxeem-state", "data"),
+    Input("show-vol-skew-state", "data"),
     Input("show-vol-gvz-state", "data"),
     Input("show-vol-ovx-state", "data"),
     Input("show-vol-stlfsi-state", "data"),
     Input("show-vol-hy_oas-state", "data"),
     Input("show-vol-ig_oas-state", "data"),
     Input("show-vol-move-state", "data"),
+    Input("show-vol-dxy-state", "data"),
     Input("vol-band-select", "value"),
     Input("vol-median-select", "value"),
     Input("cs-baseline-tenor", "value"),
@@ -2501,12 +2623,16 @@ def update_visuals(
     show_cs_agency_mbs_state,
     show_vol_vix_state,
     show_vol_vxn_state,
+    show_vol_rvx_state,
+    show_vol_vxeem_state,
+    show_vol_skew_state,
     show_vol_gvz_state,
     show_vol_ovx_state,
     show_vol_stlfsi_state,
     show_vol_hy_oas_state,
     show_vol_ig_oas_state,
     show_vol_move_state,
+    show_vol_dxy_state,
     vol_band_mode,
     vol_median_mode,
     cs_baseline_tenor,
@@ -2544,12 +2670,16 @@ def update_visuals(
     show_cs_agency_mbs = bool(show_cs_agency_mbs_state)
     show_vol_vix = bool(show_vol_vix_state)
     show_vol_vxn = bool(show_vol_vxn_state)
+    show_vol_rvx = bool(show_vol_rvx_state)
+    show_vol_vxeem = bool(show_vol_vxeem_state)
+    show_vol_skew = bool(show_vol_skew_state)
     show_vol_gvz = bool(show_vol_gvz_state)
     show_vol_ovx = bool(show_vol_ovx_state)
     show_vol_stlfsi = bool(show_vol_stlfsi_state)
     show_vol_hy_oas = bool(show_vol_hy_oas_state)
     show_vol_ig_oas = bool(show_vol_ig_oas_state)
     show_vol_move = bool(show_vol_move_state)
+    show_vol_dxy = bool(show_vol_dxy_state)
     show_fed_rate = "on" in (show_fed_rate_val or [])
     show_inflation = "on" in (show_inflation_val or [])
     show_unemployment = "on" in (show_unemployment_val or [])
@@ -2737,12 +2867,16 @@ def update_visuals(
         show_unemp_ind=show_unemp_ind,
         show_vol_vix=show_vol_vix,
         show_vol_vxn=show_vol_vxn,
+        show_vol_rvx=show_vol_rvx,
+        show_vol_vxeem=show_vol_vxeem,
+        show_vol_skew=show_vol_skew,
         show_vol_gvz=show_vol_gvz,
         show_vol_ovx=show_vol_ovx,
         show_vol_stlfsi=show_vol_stlfsi,
         show_vol_hy_oas=show_vol_hy_oas,
         show_vol_ig_oas=show_vol_ig_oas,
         show_vol_move=show_vol_move,
+        show_vol_dxy=show_vol_dxy,
         vol_band_mode=vol_band_mode,
         vol_median_mode=vol_median_mode,
     )
@@ -2875,12 +3009,16 @@ def update_visuals(
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
+            "rvx": show_vol_rvx,
+            "vxeem": show_vol_vxeem,
+            "skew": show_vol_skew,
             "gvz": show_vol_gvz,
             "ovx": show_vol_ovx,
             "stlfsi": show_vol_stlfsi,
             "hy_oas": show_vol_hy_oas,
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
+            "dxy": show_vol_dxy,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
