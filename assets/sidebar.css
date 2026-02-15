@@ -359,14 +359,22 @@ body {
 
 .below-chart-controls {
   margin-top: 14px;
-  padding: 12px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: #eaf3ff;
 }
 
 .macro-controls-box {
   margin-top: 12px;
+  background: #eaf8ea;
+  border-color: #d7e8d7;
+}
+
+.crisis-controls-box {
+  margin-top: 12px;
+  background: #ffe8ef;
+  border-color: #efcdd8;
 }
 
 .below-chart-controls-wrap {
@@ -375,10 +383,14 @@ body {
 
 .credit-spreads-box {
   margin-top: 0;
+  background: #fff2e3;
+  border-color: #ecdcc9;
 }
 
 .volatility-box {
   margin-top: 0;
+  background: #ffeceb;
+  border-color: #efc9c6;
 }
 
 .volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(1) { background: #be185d; border-color: #9d174d; color: #ffffff; }
@@ -476,7 +488,8 @@ body {
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
-  margin-top: 6px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .row-spacer {
@@ -549,7 +562,7 @@ body {
 }
 
 .secondary-controls {
-  margin-top: 6px;
+  margin-top: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
@@ -573,6 +586,24 @@ body {
 .secondary-controls .control-group input[type="checkbox"] {
   width: 13px;
   height: 13px;
+}
+
+.crisis-controls-box .secondary-controls {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.crisis-controls-box .secondary-controls .control-group {
+  width: 100%;
+}
+
+.macro-controls-box .secondary-controls {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.macro-controls-box .secondary-controls .control-group {
+  width: 100%;
 }
 
 .DateRangePicker_picker {

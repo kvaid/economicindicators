@@ -34,6 +34,16 @@ OUT_CSV_COMBINED = OUT_DIR / "volatility.csv"
 FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
 ROUND_DIGITS = 2
 Z_SCORE_WINDOW = 90
+VOLATILITY_OUTPUT_ORDER = [
+    "vix",
+    "vxn",
+    "move",
+    "ig_oas",
+    "hy_oas",
+    "gvz",
+    "ovx",
+    "stlfsi",
+]
 
 
 # -----------------------------
@@ -213,6 +223,9 @@ def main() -> None:
     _ensure_out_dir(OUT_CSV_COMBINED)
 
     df_original = build_indicator_dataset()
+    ordered_original_cols = [c for c in VOLATILITY_OUTPUT_ORDER if c in df_original.columns]
+    remaining_original_cols = [c for c in df_original.columns if c not in ordered_original_cols]
+    df_original = df_original[ordered_original_cols + remaining_original_cols]
     df_zscore = build_rolling_zscore_dataset(df_original, window=Z_SCORE_WINDOW)
 
     numeric_cols_original = df_original.select_dtypes(include="number").columns

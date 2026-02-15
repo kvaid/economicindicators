@@ -1344,38 +1344,90 @@ app.layout = html.Div(
                     [
                         html.Div(
                             [
-                                dcc.Checklist(
-                                    id="show-fed-rate",
-                                    options=[{"label": "Federal Reserve Rate", "value": "on"}],
-                                    value=[],
-                                    className="control-group",
-                                ),
-                                dcc.Checklist(
-                                    id="show-inflation",
-                                    options=[{"label": "Core PCE Inflation", "value": "on"}],
-                                    value=[],
-                                    className="control-group",
-                                ),
-                                dcc.Checklist(
-                                    id="show-unemployment",
-                                    options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
-                                    value=[],
-                                    className="control-group",
-                                ),
-                                dcc.Checklist(
-                                    id="show-u6-unemployment",
-                                    options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
-                                    value=[],
-                                    className="control-group",
-                                ),
-                                dcc.Checklist(
-                                    id="show-unemp-ind",
-                                    options=[{"label": "U3-NROU Unemployment", "value": "on"}],
-                                    value=[],
-                                    className="control-group",
+                                html.Div("Major Economic Crisis", className="row-tag"),
+                                html.Div(
+                                    [
+                                        dcc.Checklist(
+                                            id="show-crisis-dotcom",
+                                            options=[{"label": "Dot Com Bubble", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-crisis-gfc",
+                                            options=[{"label": "Global Financial Crisis", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-crisis-eu-debt",
+                                            options=[{"label": "EU Debt Crisis", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-crisis-covid",
+                                            options=[{"label": "COVID-19 Recession", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-crisis-us-banking",
+                                            options=[{"label": "US Regional Banking Crisis", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                    ],
+                                    className="secondary-controls",
                                 ),
                             ],
-                            className="secondary-controls",
+                            className="spread-row",
+                        ),
+                    ],
+                    className="below-chart-controls crisis-controls-box",
+                ),
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Div("Macro indicators", className="row-tag"),
+                                html.Div(
+                                    [
+                                        dcc.Checklist(
+                                            id="show-fed-rate",
+                                            options=[{"label": "Federal Reserve Rate", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-inflation",
+                                            options=[{"label": "Core PCE Inflation", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-unemployment",
+                                            options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-u6-unemployment",
+                                            options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                        dcc.Checklist(
+                                            id="show-unemp-ind",
+                                            options=[{"label": "U3-NROU Unemployment", "value": "on"}],
+                                            value=[],
+                                            className="control-group",
+                                        ),
+                                    ],
+                                    className="secondary-controls",
+                                ),
+                            ],
+                            className="spread-row",
                         ),
                     ],
                     className="below-chart-controls macro-controls-box",
@@ -1622,6 +1674,11 @@ app.layout = html.Div(
     Input("vol-hy_oas-btn", "n_clicks"),
     Input("vol-ig_oas-btn", "n_clicks"),
     Input("vol-move-btn", "n_clicks"),
+    Input("show-crisis-dotcom", "value"),
+    Input("show-crisis-gfc", "value"),
+    Input("show-crisis-eu-debt", "value"),
+    Input("show-crisis-covid", "value"),
+    Input("show-crisis-us-banking", "value"),
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("timeline-slider", "value"),
@@ -1632,6 +1689,11 @@ def apply_preset(*args):
     if not trigger:
         return no_update, no_update, no_update, no_update
 
+    crisis_dotcom_val = args[-8]
+    crisis_gfc_val = args[-7]
+    crisis_eu_debt_val = args[-6]
+    crisis_covid_val = args[-5]
+    crisis_us_banking_val = args[-4]
     start_date_str = args[-3]
     end_date_str = args[-2]
     slider_range = args[-1]
@@ -1653,6 +1715,61 @@ def apply_preset(*args):
             date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
         ]
         return start_date, end_date, slider_value, preset
+
+    if trigger == "show-crisis-dotcom":
+        if "on" in (crisis_dotcom_val or []):
+            start_date = max(timeline_min_dt, pd.Timestamp("2000-01-01")).date().isoformat()
+            end_date = pd.Timestamp(max_dt).date().isoformat()
+            slider_value = [
+                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+            ]
+            return start_date, end_date, slider_value, None
+        return no_update, no_update, no_update, no_update
+
+    if trigger == "show-crisis-gfc":
+        if "on" in (crisis_gfc_val or []):
+            start_date = max(timeline_min_dt, pd.Timestamp("2006-07-01")).date().isoformat()
+            end_date = pd.Timestamp(max_dt).date().isoformat()
+            slider_value = [
+                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+            ]
+            return start_date, end_date, slider_value, None
+        return no_update, no_update, no_update, no_update
+
+    if trigger == "show-crisis-eu-debt":
+        if "on" in (crisis_eu_debt_val or []):
+            start_date = max(timeline_min_dt, pd.Timestamp("2009-01-01")).date().isoformat()
+            end_date = pd.Timestamp(max_dt).date().isoformat()
+            slider_value = [
+                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+            ]
+            return start_date, end_date, slider_value, None
+        return no_update, no_update, no_update, no_update
+
+    if trigger == "show-crisis-covid":
+        if "on" in (crisis_covid_val or []):
+            start_date = max(timeline_min_dt, pd.Timestamp("2019-07-01")).date().isoformat()
+            end_date = pd.Timestamp(max_dt).date().isoformat()
+            slider_value = [
+                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+            ]
+            return start_date, end_date, slider_value, None
+        return no_update, no_update, no_update, no_update
+
+    if trigger == "show-crisis-us-banking":
+        if "on" in (crisis_us_banking_val or []):
+            start_date = max(timeline_min_dt, pd.Timestamp("2022-07-01")).date().isoformat()
+            end_date = pd.Timestamp(max_dt).date().isoformat()
+            slider_value = [
+                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
+                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
+            ]
+            return start_date, end_date, slider_value, None
+        return no_update, no_update, no_update, no_update
 
     if trigger == "timeline-slider":
         if not slider_range or len(slider_range) != 2:
@@ -2354,6 +2471,11 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-unemployment", "value"),
     Input("show-u6-unemployment", "value"),
     Input("show-unemp-ind", "value"),
+    Input("show-crisis-dotcom", "value"),
+    Input("show-crisis-gfc", "value"),
+    Input("show-crisis-eu-debt", "value"),
+    Input("show-crisis-covid", "value"),
+    Input("show-crisis-us-banking", "value"),
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("refresh-token", "data"),
@@ -2393,6 +2515,11 @@ def update_visuals(
     show_unemployment_val,
     show_u6_unemployment_val,
     show_unemp_ind_val,
+    show_crisis_dotcom_val,
+    show_crisis_gfc_val,
+    show_crisis_eu_debt_val,
+    show_crisis_covid_val,
+    show_crisis_us_banking_val,
     start_date_str,
     end_date_str,
     _refresh_token,
@@ -2428,6 +2555,11 @@ def update_visuals(
     show_unemployment = "on" in (show_unemployment_val or [])
     show_u6_unemployment = "on" in (show_u6_unemployment_val or [])
     show_unemp_ind = "on" in (show_unemp_ind_val or [])
+    show_crisis_dotcom = "on" in (show_crisis_dotcom_val or [])
+    show_crisis_gfc = "on" in (show_crisis_gfc_val or [])
+    show_crisis_eu_debt = "on" in (show_crisis_eu_debt_val or [])
+    show_crisis_covid = "on" in (show_crisis_covid_val or [])
+    show_crisis_us_banking = "on" in (show_crisis_us_banking_val or [])
 
     selected_maturities = selected_maturities or []
 
@@ -2615,6 +2747,46 @@ def update_visuals(
         vol_median_mode=vol_median_mode,
     )
     fig.update_xaxes(range=[start_date.isoformat(), end_date.isoformat()])
+    if show_crisis_dotcom:
+        fig.add_vrect(
+            x0="2000-03-01",
+            x1="2002-03-31",
+            fillcolor="rgba(239, 68, 68, 0.14)",
+            line_width=0,
+            layer="below",
+        )
+    if show_crisis_gfc:
+        fig.add_vrect(
+            x0="2007-08-01",
+            x1="2009-08-31",
+            fillcolor="rgba(239, 68, 68, 0.14)",
+            line_width=0,
+            layer="below",
+        )
+    if show_crisis_eu_debt:
+        fig.add_vrect(
+            x0="2010-01-01",
+            x1="2013-12-31",
+            fillcolor="rgba(239, 68, 68, 0.14)",
+            line_width=0,
+            layer="below",
+        )
+    if show_crisis_covid:
+        fig.add_vrect(
+            x0="2020-01-01",
+            x1="2020-05-31",
+            fillcolor="rgba(239, 68, 68, 0.14)",
+            line_width=0,
+            layer="below",
+        )
+    if show_crisis_us_banking:
+        fig.add_vrect(
+            x0="2023-03-01",
+            x1="2023-07-31",
+            fillcolor="rgba(239, 68, 68, 0.14)",
+            line_width=0,
+            layer="below",
+        )
 
     export_series: list[tuple[str, pd.Series]] = []
 
