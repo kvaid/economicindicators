@@ -1981,14 +1981,14 @@ def update_maturity_button_styles(selected):
     for maturity in MATURITY_PRESETS:
         if maturity in selected_set:
             color = YIELD_COLORS.get(maturity, "#2E73B8")
-            text_color = "#0F172A" if maturity in {"1Y", "2Y", "5Y"} else "#FFFFFF"
             styles.append(
                 {
-                    "background": color,
-                    "backgroundColor": color,
+                    "background": "transparent",
+                    "backgroundColor": "transparent",
                     "backgroundImage": "none",
                     "borderColor": color,
-                    "color": text_color,
+                    "borderWidth": "2px",
+                    "color": color,
                 }
             )
         else:
@@ -2009,11 +2009,12 @@ def toggle_spread_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "#0B3A63",
-            "backgroundColor": "#0B3A63",
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": "#0B3A63",
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": "#0B3A63",
         }
         if new_state
         else {}
@@ -2034,11 +2035,12 @@ def toggle_us_ig_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["us_ig_corp"],
-            "backgroundColor": BOND_LINE_COLORS["us_ig_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["us_ig_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["us_ig_corp"],
         }
         if new_state
         else {}
@@ -2059,11 +2061,12 @@ def toggle_aaa_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["aaa_corp"],
-            "backgroundColor": BOND_LINE_COLORS["aaa_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["aaa_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["aaa_corp"],
         }
         if new_state
         else {}
@@ -2084,11 +2087,12 @@ def toggle_us_hy_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["us_hy_corp"],
-            "backgroundColor": BOND_LINE_COLORS["us_hy_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["us_hy_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["us_hy_corp"],
         }
         if new_state
         else {}
@@ -2109,11 +2113,12 @@ def toggle_ig_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["ig_muni"],
-            "backgroundColor": BOND_LINE_COLORS["ig_muni"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["ig_muni"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["ig_muni"],
         }
         if new_state
         else {}
@@ -2134,11 +2139,12 @@ def toggle_hy_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["hy_muni"],
-            "backgroundColor": BOND_LINE_COLORS["hy_muni"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["hy_muni"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["hy_muni"],
         }
         if new_state
         else {}
@@ -2159,11 +2165,12 @@ def toggle_aaa_clo_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["aaa_clo"],
-            "backgroundColor": BOND_LINE_COLORS["aaa_clo"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["aaa_clo"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["aaa_clo"],
         }
         if new_state
         else {}
@@ -2184,11 +2191,12 @@ def toggle_senior_loans_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["senior_loans"],
-            "backgroundColor": BOND_LINE_COLORS["senior_loans"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["senior_loans"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["senior_loans"],
         }
         if new_state
         else {}
@@ -2209,11 +2217,12 @@ def toggle_agency_mbs_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": BOND_LINE_COLORS["agency_mbs"],
-            "backgroundColor": BOND_LINE_COLORS["agency_mbs"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["agency_mbs"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["agency_mbs"],
         }
         if new_state
         else {}
@@ -2234,11 +2243,12 @@ def toggle_cs_us_ig_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
         }
         if new_state
         else {}
@@ -2259,11 +2269,12 @@ def toggle_cs_aaa_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
         }
         if new_state
         else {}
@@ -2284,11 +2295,12 @@ def toggle_cs_us_hy_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
         }
         if new_state
         else {}
@@ -2309,11 +2321,12 @@ def toggle_cs_ig_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
         }
         if new_state
         else {}
@@ -2334,11 +2347,12 @@ def toggle_cs_hy_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
         }
         if new_state
         else {}
@@ -2359,11 +2373,12 @@ def toggle_cs_aaa_clo_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
         }
         if new_state
         else {}
@@ -2384,11 +2399,12 @@ def toggle_cs_senior_loans_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
         }
         if new_state
         else {}
@@ -2409,11 +2425,12 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
-            "backgroundColor": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
+            "background": "transparent",
+            "backgroundColor": "transparent",
             "backgroundImage": "none",
             "borderColor": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
-            "color": "#FFFFFF",
+            "borderWidth": "2px",
+            "color": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
         }
         if new_state
         else {}
@@ -2550,11 +2567,12 @@ def toggle_volatility_buttons(
             color = VOLATILITY_BUTTON_COLORS[key]
             styles.append(
                 {
-                    "background": color,
-                    "backgroundColor": color,
+                    "background": "transparent",
+                    "backgroundColor": "transparent",
                     "backgroundImage": "none",
                     "borderColor": color,
-                    "color": "#FFFFFF",
+                    "borderWidth": "2px",
+                    "color": color,
                 }
             )
         else:
