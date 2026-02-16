@@ -42,6 +42,7 @@ VOLATILITY_OUTPUT_ORDER = [
     "skew",
     "move",
     "dxy",
+    "cnn_fear_greed",
     "ig_oas",
     "hy_oas",
     "gvz",
@@ -82,6 +83,15 @@ YF_TICKERS: Dict[str, str] = {
     "move": "^MOVE",
     "skew": "^SKEW",
     "dxy": "DX-Y.NYB",
+}
+
+PROXY_HELPER_TICKERS: Dict[str, str] = {
+    "spy": "SPY",
+    "tlt": "TLT",
+    "hyg": "HYG",
+    "lqd": "LQD",
+    "xly": "XLY",
+    "xlp": "XLP",
 }
 
 
@@ -183,6 +193,88 @@ def add_curve_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _rolling_zscore(series: pd.Series, window: int = 252, min_periods: int = 63) -> pd.Series:
+    s = pd.to_numeric(series, errors="coerce")
+    mu = s.rolling(window=window, min_periods=min_periods).mean()
+    sigma = s.rolling(window=window, min_periods=min_periods).std()
+    z = (s - mu) / sigma
+    return z.clip(-3, 3)
+
+
+def _z_to_score(z: pd.Series, invert: bool = False) -> pd.Series:
+    score = 50.0 + (z / 3.0) * 50.0
+    score = score.clip(0, 100)
+    return 100.0 - score if invert else score
+
+
+def build_cnn_fear_greed_proxy(base_df: pd.DataFrame, helper_px: pd.DataFrame) -> pd.Series:
+    """
+    CNN Fear & Greed-style proxy (0-100) using 7 weighted components.
+    This is an approximation, not CNN's proprietary exact methodology.
+    """
+    components: dict[str, pd.Series] = {}
+
+    # 1) Market volatility (lower VIX => more greed)
+    if "vix" in base_df.columns:
+        components["market_volatility"] = _z_to_score(_rolling_zscore(base_df["vix"]), invert=True)
+
+    # 2) Nasdaq volatility (lower VXN => more greed)
+    if "vxn" in base_df.columns:
+        components["nasdaq_volatility"] = _z_to_score(_rolling_zscore(base_df["vxn"]), invert=True)
+
+    if {"spy"}.issubset(helper_px.columns):
+        spy = pd.to_numeric(helper_px["spy"], errors="coerce")
+        # 3) Market momentum vs 125D trend
+        trend_125 = (spy / spy.rolling(window=125, min_periods=60).mean()) - 1.0
+        components["market_momentum"] = _z_to_score(_rolling_zscore(trend_125), invert=False)
+        # 4) Short-term momentum proxy
+        mom_20 = spy.pct_change(20)
+        components["price_strength_proxy"] = _z_to_score(_rolling_zscore(mom_20), invert=False)
+
+    # 5) Junk bond demand proxy
+    if {"hyg", "lqd"}.issubset(helper_px.columns):
+        hyg_lqd = pd.to_numeric(helper_px["hyg"], errors="coerce") / pd.to_numeric(helper_px["lqd"], errors="coerce")
+        components["junk_bond_demand"] = _z_to_score(_rolling_zscore(hyg_lqd), invert=False)
+
+    # 6) Safe-haven demand proxy: SPY/TLT (higher => greedier)
+    if {"spy", "tlt"}.issubset(helper_px.columns):
+        spy_tlt = pd.to_numeric(helper_px["spy"], errors="coerce") / pd.to_numeric(helper_px["tlt"], errors="coerce")
+        components["safe_haven_demand"] = _z_to_score(_rolling_zscore(spy_tlt), invert=False)
+
+    # 7) Stock/beta risk appetite proxy
+    if {"xly", "xlp"}.issubset(helper_px.columns):
+        xly_xlp = pd.to_numeric(helper_px["xly"], errors="coerce") / pd.to_numeric(helper_px["xlp"], errors="coerce")
+        components["risk_appetite"] = _z_to_score(_rolling_zscore(xly_xlp), invert=False)
+
+    if not components:
+        return pd.Series(index=base_df.index, dtype="float64", name="cnn_fear_greed")
+
+    # Equal-weight 7-component blend with daily re-normalization for missing values.
+    weights = {
+        "market_volatility": 1 / 7,
+        "nasdaq_volatility": 1 / 7,
+        "market_momentum": 1 / 7,
+        "price_strength_proxy": 1 / 7,
+        "junk_bond_demand": 1 / 7,
+        "safe_haven_demand": 1 / 7,
+        "risk_appetite": 1 / 7,
+    }
+
+    comp_df = pd.concat(components.values(), axis=1)
+    comp_df.columns = list(components.keys())
+    weight_s = pd.Series(weights, dtype="float64")
+    weight_s = weight_s.reindex(comp_df.columns).fillna(0.0)
+
+    weighted_sum = comp_df.mul(weight_s, axis=1).sum(axis=1, skipna=True)
+    available_weight = comp_df.notna().mul(weight_s, axis=1).sum(axis=1)
+    min_components = 4
+    score = weighted_sum / available_weight.replace(0.0, pd.NA)
+    score = score.where(comp_df.notna().sum(axis=1) >= min_components)
+    score = score.clip(0, 100)
+    score.name = "cnn_fear_greed"
+    return score
+
+
 # -----------------------------
 # Optional OFR FSI stub
 # -----------------------------
@@ -210,6 +302,7 @@ def build_indicator_dataset(start: str = START_DATE,
 
     # 2) Yahoo Finance indices (MOVE/SKEW/DXY)
     yf_idx = fetch_yfinance_close(YF_TICKERS, start, end)
+    helper_px = fetch_yfinance_close(PROXY_HELPER_TICKERS, start, end)
 
     # 3) Optional OFR (stub)
     ofr = fetch_ofr_fsi_stub()
@@ -220,6 +313,7 @@ def build_indicator_dataset(start: str = START_DATE,
     df = df.sort_index()
 
     df = add_curve_features(df)
+    df["cnn_fear_greed"] = build_cnn_fear_greed_proxy(df, helper_px)
 
     # Optional: keep from 2007 onward even if some sources start later
     df = df.loc[pd.to_datetime(start):]

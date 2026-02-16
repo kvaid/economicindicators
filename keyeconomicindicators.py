@@ -72,6 +72,7 @@ VOLATILITY_COLS = [
     "ig_oas",
     "move",
     "dxy",
+    "cnn_fear_greed",
 ]
 VOLATILITY_DATA_COLS = {col: col for col in VOLATILITY_COLS}
 VOLATILITY_BUTTON_COLORS = {
@@ -87,6 +88,7 @@ VOLATILITY_BUTTON_COLORS = {
     "ig_oas": "#0F766E",
     "move": "#374151",
     "dxy": "#92400E",
+    "cnn_fear_greed": "#EA580C",
 }
 VOLATILITY_HOVER_LABELS = {
     "vix": "VIX (Equity Volatility)",
@@ -100,6 +102,7 @@ VOLATILITY_HOVER_LABELS = {
     "hy_oas": "High Yield Corporate OAS",
     "ig_oas": "IG Corporate OAS",
     "dxy": "Measures the value of the USD relative to a basket of euro (57.6% weight), Japanese yen (13.6%), British pound (11.9%), Canadian dollar (9.1%), Swedish krona (4.2%), and Swiss franc (3.6%). It serves as a broad gauge of USD strength/weakness in global FX markets, often inversely correlated with equity/commodity assets",
+    "cnn_fear_greed": "CNN Fear & Greed Proxy (0-100 composite)",
     "move": "MOVE Index is the bond market’s analog to VIX: it’s a market-implied measure of expected volatility in U.S. Treasury yields over the next ~30 days. It’s built from a yield-curve-weighted basket of at-the-money, 1-month options tied to key points on the Treasury curve",
 }
 VOLATILITY_BUTTON_LABELS = {
@@ -115,6 +118,7 @@ VOLATILITY_BUTTON_LABELS = {
     "ig_oas": "IG OAS (IG BOND SPREADS)",
     "move": "MOVE (BONDS)",
     "dxy": "DXY (US DOLLAR)",
+    "cnn_fear_greed": "CNN FEAR AND GREED",
 }
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
@@ -350,6 +354,7 @@ def build_figure(
     show_vol_ig_oas: bool,
     show_vol_move: bool,
     show_vol_dxy: bool,
+    show_vol_cnn_fear_greed: bool,
     vol_band_mode: str | None,
     vol_median_mode: str | None,
 ) -> go.Figure:
@@ -462,6 +467,7 @@ def build_figure(
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
             "dxy": show_vol_dxy,
+            "cnn_fear_greed": show_vol_cnn_fear_greed,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
@@ -748,6 +754,7 @@ def build_figure(
         hy_oas_plotted = False
         move_plotted = False
         dxy_plotted = False
+        cnn_fear_greed_plotted = False
         vol_flags = {
             "vix": show_vol_vix,
             "vxn": show_vol_vxn,
@@ -761,6 +768,7 @@ def build_figure(
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
             "dxy": show_vol_dxy,
+            "cnn_fear_greed": show_vol_cnn_fear_greed,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
@@ -795,6 +803,8 @@ def build_figure(
                 move_plotted = True
             if key == "dxy" and not vol_series.dropna().empty:
                 dxy_plotted = True
+            if key == "cnn_fear_greed" and not vol_series.dropna().empty:
+                cnn_fear_greed_plotted = True
             window_map = {
                 "3y_median": ("1096D", "3Y"),
                 "10y_median": ("3652D", "10Y"),
@@ -904,253 +914,305 @@ def build_figure(
                     )
                 )
         if vix_plotted:
-            fig.add_hline(
-                y=15,
+            fig.add_hrect(y0=0, y1=15, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=25, y1=35, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=35, y1=50, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=50, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 15: Complacency/Low Volatility",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
+                y=7.5,
+                text="Low Vol / Complacency",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#166534"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=30,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 30: Heightened Fear/Market Stress",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
+                y=20,
+                text="Normal / Watchful",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#4B5563"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=30,
+                text="Elevated Stress",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#9A3412"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=42.5,
+                text="High Stress / Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#B91C1C"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=75,
+                text="Extreme Stress / Panic",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#7F1D1D"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
         if vxn_plotted:
-            fig.add_hline(
-                y=20,
+            fig.add_hrect(y0=0, y1=20, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=30, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=55, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 20: Low fear/Complacency",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
+                y=10,
+                text="Low Vol / Complacency",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#166534"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=30,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="30-40: Elevated Stress/Nervousness (sector-specific fears, earnings volatility)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
+                y=25,
+                text="Normal / Watchful",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#4B5563"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=50,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 50: Significant Market Fear)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
+                y=35,
+                text="Elevated Stress",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#9A3412"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=47.5,
+                text="High Stress / Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#B91C1C"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=77.5,
+                text="Extreme Stress / Panic",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#7F1D1D"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
         if rvx_plotted:
-            fig.add_hline(
-                y=20,
+            fig.add_hrect(y0=0, y1=22, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=32, y1=42, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=42, y1=58, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=58, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 20: Low fear/Complacency in small caps",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
+                y=11,
+                text="Low Vol / Complacency",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#166534"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=30,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="30-40: Elevated stress (economic concerns impacting smaller firms)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
+                y=27,
+                text="Normal / Watchful",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#4B5563"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=37,
+                text="Elevated Stress",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#9A3412"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
                 y=50,
+                text="High Stress / Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#B91C1C"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 50: Significant fear",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
+                y=79,
+                text="Extreme Stress / Panic",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#7F1D1D"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
         if skew_plotted:
-            fig.add_hline(
-                y=130,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 130: Low Tail-Risk Concern/Complacency (markets not overly worried about big drops)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=150,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="150-160: Elevated Nervousness about Tail risks (increased hedging demand for protection)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=160,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 160: Significant fear of outsized downside moves, often during volatile or uncertain regimes",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
+            fig.add_hrect(y0=0, y1=130, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=145, y1=160, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=160, y1=175, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=175, y1=260, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=65, text="Low Tail-Risk Concern", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=137.5, text="Watchful", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=152.5, text="Elevated Tail-Risk Pricing", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=167.5, text="High Tail-Risk Concern", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=217.5, text="Extreme Tail-Risk Pricing", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if vxeem_plotted:
-            fig.add_hline(
-                y=18,
+            fig.add_hrect(y0=0, y1=18, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=28, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=55, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 18: Low fear/Complacency (stable conditions, limited risk premiums)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
+                y=9,
+                text="Low Vol / Complacency",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#166534"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=25,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="25-30: Elevated Nervousness (EM selloffs, currency crises, or commodity shocks)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
+                y=23,
+                text="Normal / Watchful",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#4B5563"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=40,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 40: Significant EM fear, often during global crises or region-specific events",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
+                y=34,
+                text="Elevated Stress",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#9A3412"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=47.5,
+                text="High Stress / Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#B91C1C"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=77.5,
+                text="Extreme Stress / Panic",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#7F1D1D"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
         if gvz_plotted:
-            fig.add_hline(
-                y=20,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 20: Low Uncertainty/Complacency (stable prices, limited safe-haven demand)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=30,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="30-40: Elevated Stress/Nervousness (rapid gold price swings, macro surprises)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=40,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 40: Significant Fear, often during crises or sharp corrections in gold",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
+            fig.add_hrect(y0=0, y1=20, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=30, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=55, y1=120, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=10, text="Low Vol / Complacency", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=25, text="Normal / Watchful", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=35, text="Elevated Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=47.5, text="High Stress / Fear", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=87.5, text="Extreme Stress / Panic", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if ovx_plotted:
-            fig.add_hline(
-                y=35,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 35: Low Uncertainty/Complacency (stable prices, limited shocks)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=50,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="50-70: Elevated Stress/Nervousness (rapid price swings, supply disruptions)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=70,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 70: Significant Fear, often during major oil crises or sharp corrections",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
+            fig.add_hrect(y0=0, y1=35, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=50, y1=70, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=70, y1=90, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=90, y1=160, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=17.5, text="Low Vol / Complacency", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=42.5, text="Normal / Watchful", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=60, text="Elevated Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=80, text="High Stress / Fear", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=125, text="Extreme Stress / Panic", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if stlfsi_plotted:
-            fig.add_hline(
-                y=-0.5,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below -0.5: Low Stress/Complacency (stable spreads, low volatility, supportive conditions)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=0.5,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="0.5 to 2: Elevated Stress/Nervousness (widening spreads, rising volatility)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=3,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 3: Significant Systemic Fear, often during major crises",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
-            fig.add_hline(
-                y=0,
-                yref="y2",
-                line_dash="dash",
-                line_color="#6B7280",
-                line_width=1.2,
-                annotation_text="Average/Normal Financial Market Stress",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#4B5563"},
-            )
+            fig.add_hrect(y0=-5, y1=-0.5, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=0.5, y1=2.0, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=2.0, y1=3.0, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=3.0, y1=6.0, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=-2.75, text="Easy Conditions", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=0.0, text="Normal", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=1.25, text="Elevated Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=2.5, text="High Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=4.5, text="Extreme Systemic Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if ig_oas_plotted:
             fig.add_hline(
                 y=0.8,
@@ -1183,98 +1245,101 @@ def build_figure(
                 annotation_font={"size": 11, "color": "#B91C1C"},
             )
         if hy_oas_plotted:
-            fig.add_hline(
-                y=3,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 3.0: Low Credit Risk/Complacency (tight spreads, high demand for yield, stable economy, low defaults)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=6,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="6.0-8.0: Elevated Stress/Nervousness (widening due to recession fears, liquidity issues, or sector problems)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=10,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 10.0: Significant Credit Fear, often during crises or sharp economic downturns",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
+            fig.add_hrect(y0=0, y1=3, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=6, y1=8, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=8, y1=10, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=10, y1=20, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=1.5, text="Low Credit Risk / Complacency", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=4.5, text="Normal / Watchful", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=7, text="Elevated Credit Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=9, text="High Credit Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=15, text="Extreme Credit Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if move_plotted:
-            fig.add_hline(
-                y=75,
-                yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Below 70-80: Low Uncertainty/Complacency (Stable Rate Outlooks)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#166534"},
-            )
-            fig.add_hline(
-                y=110,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="100-120+: Elevated Uncertainty (Fed policy, Inflation)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#C2410C"},
-            )
-            fig.add_hline(
-                y=140,
-                yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Above 140: Significant Stress (Rapid Yield Swings)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
-            )
+            fig.add_hrect(y0=0, y1=80, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=100, y1=120, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=120, y1=140, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=140, y1=240, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=40, text="Low Rates Vol", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=90, text="Watchful", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=110, text="Elevated Uncertainty", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=130, text="High Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=190, text="Extreme Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if dxy_plotted:
-            fig.add_hline(
-                y=90,
+            fig.add_hrect(y0=0, y1=90, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=100, y1=105, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=105, y1=110, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=110, y1=150, yref="y2", fillcolor="rgba(21, 128, 61, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=45, text="USD Weak Regime", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#B91C1C"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=95, text="Neutral USD", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#4B5563"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=102.5, text="Moderately Strong USD", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#9A3412"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=107.5, text="Strong USD", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#166534"}, bgcolor="rgba(255,255,255,0.65)")
+            fig.add_annotation(xref="paper", x=0.005, yref="y2", y=130, text="Extreme USD Strength", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#14532D"}, bgcolor="rgba(255,255,255,0.65)")
+        if cnn_fear_greed_plotted:
+            fig.add_hrect(y0=0, y1=25, yref="y2", fillcolor="rgba(185, 28, 28, 0.16)", line_width=0, layer="below")
+            fig.add_hrect(y0=25, y1=45, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=55, y1=75, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=75, y1=100, yref="y2", fillcolor="rgba(21, 128, 61, 0.16)", line_width=0, layer="below")
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF0000",
-                line_width=1.4,
-                annotation_text="Below 90: USD weakness (risk-on flows, lower U.S. yields, or foreign outperformance)",
-                annotation_position="bottom left",
-                annotation_font={"size": 11, "color": "#B91C1C"},
+                y=12.5,
+                text="Extreme Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#7F1D1D"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=100,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#FF8C00",
-                line_width=1.4,
-                annotation_text="100-105: USD strength/elevated (during U.S. policy divergence or risk-off)",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#C2410C"},
+                y=35,
+                text="Fear",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#9A3412"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
-            fig.add_hline(
-                y=110,
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
                 yref="y2",
-                line_dash="dash",
-                line_color="#16A34A",
-                line_width=1.4,
-                annotation_text="Above 110: Significant rallies, often in crises or tightening cycles",
-                annotation_position="top left",
-                annotation_font={"size": 11, "color": "#166534"},
+                y=50,
+                text="Neutral",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#4B5563"},
+                bgcolor="rgba(255,255,255,0.65)",
             )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=65,
+                text="Greed",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#166534"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            fig.add_annotation(
+                xref="paper",
+                x=0.005,
+                yref="y2",
+                y=87.5,
+                text="Extreme Greed",
+                showarrow=False,
+                xanchor="left",
+                yanchor="middle",
+                font={"size": 11, "color": "#14532D"},
+                bgcolor="rgba(255,255,255,0.65)",
+            )
+            y_range = [min(y_range[0], 0.0), max(y_range[1], 100.0)]
 
     fig.update_layout(
         template="plotly_white",
@@ -1446,6 +1511,7 @@ app.layout = html.Div(
         dcc.Store(id="show-vol-ig_oas-state", data=False),
         dcc.Store(id="show-vol-move-state", data=False),
         dcc.Store(id="show-vol-dxy-state", data=False),
+        dcc.Store(id="show-vol-cnn_fear_greed-state", data=False),
         dcc.Interval(id="refresh-progress-interval", interval=600, n_intervals=0, disabled=True),
         html.Div(
             [
@@ -1745,7 +1811,7 @@ app.layout = html.Div(
                                                         className="maturity-btn",
                                                         title=VOLATILITY_HOVER_LABELS.get(col, col),
                                                     )
-                                                    for col in ["skew", "move", "ig_oas", "hy_oas", "dxy"]
+                                                    for col in ["skew", "move", "hy_oas", "dxy", "cnn_fear_greed"]
                                                 ],
                                                 html.Button(
                                                     VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi"),
@@ -2448,9 +2514,9 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     Output("show-vol-ovx-state", "data"),
     Output("show-vol-stlfsi-state", "data"),
     Output("show-vol-hy_oas-state", "data"),
-    Output("show-vol-ig_oas-state", "data"),
     Output("show-vol-move-state", "data"),
     Output("show-vol-dxy-state", "data"),
+    Output("show-vol-cnn_fear_greed-state", "data"),
     Output("vol-vix-btn", "className"),
     Output("vol-vxn-btn", "className"),
     Output("vol-rvx-btn", "className"),
@@ -2460,9 +2526,9 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     Output("vol-ovx-btn", "className"),
     Output("vol-stlfsi-btn", "className"),
     Output("vol-hy_oas-btn", "className"),
-    Output("vol-ig_oas-btn", "className"),
     Output("vol-move-btn", "className"),
     Output("vol-dxy-btn", "className"),
+    Output("vol-cnn_fear_greed-btn", "className"),
     Output("vol-vix-btn", "style"),
     Output("vol-vxn-btn", "style"),
     Output("vol-rvx-btn", "style"),
@@ -2472,9 +2538,9 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     Output("vol-ovx-btn", "style"),
     Output("vol-stlfsi-btn", "style"),
     Output("vol-hy_oas-btn", "style"),
-    Output("vol-ig_oas-btn", "style"),
     Output("vol-move-btn", "style"),
     Output("vol-dxy-btn", "style"),
+    Output("vol-cnn_fear_greed-btn", "style"),
     Input("vol-vix-btn", "n_clicks"),
     Input("vol-vxn-btn", "n_clicks"),
     Input("vol-rvx-btn", "n_clicks"),
@@ -2484,9 +2550,9 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     Input("vol-ovx-btn", "n_clicks"),
     Input("vol-stlfsi-btn", "n_clicks"),
     Input("vol-hy_oas-btn", "n_clicks"),
-    Input("vol-ig_oas-btn", "n_clicks"),
     Input("vol-move-btn", "n_clicks"),
     Input("vol-dxy-btn", "n_clicks"),
+    Input("vol-cnn_fear_greed-btn", "n_clicks"),
     State("show-vol-vix-state", "data"),
     State("show-vol-vxn-state", "data"),
     State("show-vol-rvx-state", "data"),
@@ -2496,9 +2562,9 @@ def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
     State("show-vol-ovx-state", "data"),
     State("show-vol-stlfsi-state", "data"),
     State("show-vol-hy_oas-state", "data"),
-    State("show-vol-ig_oas-state", "data"),
     State("show-vol-move-state", "data"),
     State("show-vol-dxy-state", "data"),
+    State("show-vol-cnn_fear_greed-state", "data"),
     prevent_initial_call=True,
 )
 def toggle_volatility_buttons(
@@ -2511,9 +2577,9 @@ def toggle_volatility_buttons(
     _ovx_clicks: int,
     _stlfsi_clicks: int,
     _hy_oas_clicks: int,
-    _ig_oas_clicks: int,
     _move_clicks: int,
     _dxy_clicks: int,
+    _cnn_fear_greed_clicks: int,
     show_vol_vix_state: bool,
     show_vol_vxn_state: bool,
     show_vol_rvx_state: bool,
@@ -2523,11 +2589,11 @@ def toggle_volatility_buttons(
     show_vol_ovx_state: bool,
     show_vol_stlfsi_state: bool,
     show_vol_hy_oas_state: bool,
-    show_vol_ig_oas_state: bool,
     show_vol_move_state: bool,
     show_vol_dxy_state: bool,
+    show_vol_cnn_fear_greed_state: bool,
 ):
-    key_order = ["vix", "vxn", "rvx", "vxeem", "skew", "gvz", "ovx", "stlfsi", "hy_oas", "ig_oas", "move", "dxy"]
+    key_order = ["vix", "vxn", "rvx", "vxeem", "skew", "gvz", "ovx", "stlfsi", "hy_oas", "move", "dxy", "cnn_fear_greed"]
     id_to_key = {f"vol-{k}-btn": k for k in key_order}
     current = {
         "vix": bool(show_vol_vix_state),
@@ -2539,9 +2605,9 @@ def toggle_volatility_buttons(
         "ovx": bool(show_vol_ovx_state),
         "stlfsi": bool(show_vol_stlfsi_state),
         "hy_oas": bool(show_vol_hy_oas_state),
-        "ig_oas": bool(show_vol_ig_oas_state),
         "move": bool(show_vol_move_state),
         "dxy": bool(show_vol_dxy_state),
+        "cnn_fear_greed": bool(show_vol_cnn_fear_greed_state),
     }
 
     trigger = callback_context.triggered_id
@@ -2655,6 +2721,7 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-vol-ig_oas-state", "data"),
     Input("show-vol-move-state", "data"),
     Input("show-vol-dxy-state", "data"),
+    Input("show-vol-cnn_fear_greed-state", "data"),
     Input("vol-band-select", "value"),
     Input("vol-median-select", "value"),
     Input("cs-baseline-tenor", "value"),
@@ -2703,6 +2770,7 @@ def update_visuals(
     show_vol_ig_oas_state,
     show_vol_move_state,
     show_vol_dxy_state,
+    show_vol_cnn_fear_greed_state,
     vol_band_mode,
     vol_median_mode,
     cs_baseline_tenor,
@@ -2747,9 +2815,10 @@ def update_visuals(
     show_vol_ovx = bool(show_vol_ovx_state)
     show_vol_stlfsi = bool(show_vol_stlfsi_state)
     show_vol_hy_oas = bool(show_vol_hy_oas_state)
-    show_vol_ig_oas = bool(show_vol_ig_oas_state)
+    show_vol_ig_oas = False
     show_vol_move = bool(show_vol_move_state)
     show_vol_dxy = bool(show_vol_dxy_state)
+    show_vol_cnn_fear_greed = bool(show_vol_cnn_fear_greed_state)
     show_fed_rate = "on" in (show_fed_rate_val or [])
     show_inflation = "on" in (show_inflation_val or [])
     show_unemployment = "on" in (show_unemployment_val or [])
@@ -2944,6 +3013,7 @@ def update_visuals(
         show_vol_ig_oas=show_vol_ig_oas,
         show_vol_move=show_vol_move,
         show_vol_dxy=show_vol_dxy,
+        show_vol_cnn_fear_greed=show_vol_cnn_fear_greed,
         vol_band_mode=vol_band_mode,
         vol_median_mode=vol_median_mode,
     )
@@ -3096,6 +3166,7 @@ def update_visuals(
             "ig_oas": show_vol_ig_oas,
             "move": show_vol_move,
             "dxy": show_vol_dxy,
+            "cnn_fear_greed": show_vol_cnn_fear_greed,
         }
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
