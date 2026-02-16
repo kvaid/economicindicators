@@ -21,7 +21,7 @@ SERIES = {
 MATURITY_PRESETS = list(SERIES.keys())
 CS_BASELINE_PRESETS = ["1Y", "2Y", "5Y", "10Y", "30Y"]
 
-PRESETS = ["1W", "YTD", "1M", "3M", "6M", "1Y", "5Y", "10Y"]
+PRESETS = ["YTD", "1W", "1M", "3M", "6M", "1Y", "5Y", "10Y", "15Y", "20Y"]
 YIELD_COLORS = {
     "1Y": "#B7D7F5",
     "2Y": "#8EBFEA",
@@ -279,6 +279,10 @@ def compute_preset_range(preset: str, min_date: pd.Timestamp, max_date: pd.Times
         start = now - pd.DateOffset(years=5)
     elif preset == "10Y":
         start = now - pd.DateOffset(years=10)
+    elif preset == "15Y":
+        start = now - pd.DateOffset(years=15)
+    elif preset == "20Y":
+        start = now - pd.DateOffset(years=20)
     else:
         start = now
 
@@ -300,13 +304,12 @@ def timeline_idx_to_date(idx: int, min_date: pd.Timestamp, max_date: pd.Timestam
 
 def build_timeline_marks(min_date: pd.Timestamp, max_date: pd.Timestamp) -> dict[int, str]:
     total_days = max((max_date - min_date).days, 1)
-    marks = {0: min_date.strftime("%Y"), total_days: max_date.strftime("%Y")}
-    step = 10
-    for year in range(min_date.year + 1, max_date.year):
-        if year % step != 0:
-            continue
+    marks = {0: min_date.strftime("%Y"), total_days: "26"}
+    for year in [2010, 2015, 2020]:
         year_start = pd.Timestamp(year=year, month=1, day=1)
-        marks[int((year_start - min_date).days)] = str(year)
+        if year_start < min_date or year_start > max_date:
+            continue
+        marks[int((year_start - min_date).days)] = f"{year % 100:02d}"
     return dict(sorted(marks.items()))
 
 
@@ -452,7 +455,7 @@ def build_figure(
         if selected_band_mode not in {"25_75", "10_90"}:
             selected_band_mode = "none"
         selected_median_mode = str(vol_median_mode or "").strip()
-        if selected_median_mode not in {"none", "3y_median", "10y_median", "15y_median", "3y_mean", "10y_mean", "15y_mean"}:
+        if selected_median_mode not in {"none", "3m_mean", "6m_mean", "1y_mean", "3y_mean", "10y_mean", "15y_mean"}:
             selected_median_mode = "none"
         vol_flags = {
             "vix": show_vol_vix,
@@ -806,9 +809,9 @@ def build_figure(
             if key == "cnn_fear_greed" and not vol_series.dropna().empty:
                 cnn_fear_greed_plotted = True
             window_map = {
-                "3y_median": ("1096D", "3Y"),
-                "10y_median": ("3652D", "10Y"),
-                "15y_median": ("5479D", "15Y"),
+                "3m_mean": ("91D", "3M"),
+                "6m_mean": ("183D", "6M"),
+                "1y_mean": ("365D", "1Y"),
                 "3y_mean": ("1096D", "3Y"),
                 "10y_mean": ("3652D", "10Y"),
                 "15y_mean": ("5479D", "15Y"),
@@ -826,23 +829,7 @@ def build_figure(
                     hovertemplate=f"{display_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
-            if selected_median_mode.endswith("_median"):
-                vol_overlay = vol_series.rolling(rolling_window, min_periods=1).median()
-                overlay_name = f"{display_label} {window_label} MEDIAN"
-                overlay_hover = f"{display_label} {window_label} Median"
-                fig.add_trace(
-                    go.Scatter(
-                        x=vol_overlay.index,
-                        y=vol_overlay.values,
-                        name=overlay_name,
-                        mode="lines",
-                        line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
-                        yaxis="y2",
-                        connectgaps=True,
-                        hovertemplate=f"{overlay_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
-                    )
-                )
-            elif selected_median_mode.endswith("_mean"):
+            if selected_median_mode.endswith("_mean"):
                 vol_overlay = vol_series.rolling(rolling_window, min_periods=1).mean()
                 overlay_name = f"{display_label} {window_label} AVERAGE"
                 overlay_hover = f"{display_label} {window_label} Average"
@@ -1411,15 +1398,6 @@ def build_figure(
     return fig
 
 
-def latest_non_null_value(df: pd.DataFrame, col: str) -> float | None:
-    if df.empty or col not in df.columns:
-        return None
-    series = pd.to_numeric(df[col], errors="coerce").dropna()
-    if series.empty:
-        return None
-    return float(series.iloc[-1])
-
-
 def _vix_dot_style(color: str) -> dict:
     return {
         "display": "inline-block",
@@ -1647,19 +1625,8 @@ def series_items_to_csv_text(series_items: list[tuple[str, pd.Series]]) -> str:
     return out.to_csv(index=True, float_format="%.4f")
 
 
-def indicator_card(label: str, value: float | None) -> html.Div:
-    value_txt = "N/A" if value is None else f"{value:.2f}%"
-    return html.Div(
-        [
-            html.Div(label, className="indicator-label"),
-            html.Div(value_txt, className="indicator-value"),
-        ],
-        className="indicator-card",
-    )
-
-
 min_dt, max_dt = get_date_bounds()
-timeline_min_dt = max(min_dt, pd.to_datetime("2000-01-01"))
+timeline_min_dt = max(min_dt, pd.to_datetime("2005-01-01"))
 default_start_str, default_end_str = compute_preset_range("5Y", timeline_min_dt, max_dt)
 default_start = pd.to_datetime(default_start_str)
 default_end = pd.to_datetime(default_end_str)
@@ -1726,7 +1693,6 @@ app.layout = html.Div(
             [
                 html.H1("Key Economic Indicators", className="page-title"),
                 html.Div(id="warning-message", className="warning-message"),
-                html.Div(id="latest-indicators", className="latest-indicators"),
                 html.Div(
                     [
                         html.Div("Select Date Range", className="chart-panel-date-label"),
@@ -1791,53 +1757,6 @@ app.layout = html.Div(
                     className="chart-panel-progress",
                     style={"display": "none"},
                 ),
-                dcc.Graph(id="indicator-graph"),
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Div("Major Economic Crisis", className="row-tag"),
-                                html.Div(
-                                    [
-                                        dcc.Checklist(
-                                            id="show-crisis-dotcom",
-                                            options=[{"label": "Dot Com Bubble", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
-                                        ),
-                                        dcc.Checklist(
-                                            id="show-crisis-gfc",
-                                            options=[{"label": "Global Financial Crisis", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
-                                        ),
-                                        dcc.Checklist(
-                                            id="show-crisis-eu-debt",
-                                            options=[{"label": "EU Debt Crisis", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
-                                        ),
-                                        dcc.Checklist(
-                                            id="show-crisis-covid",
-                                            options=[{"label": "COVID-19 Recession", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
-                                        ),
-                                        dcc.Checklist(
-                                            id="show-crisis-us-banking",
-                                            options=[{"label": "US Regional Banking Crisis", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
-                                        ),
-                                    ],
-                                    className="secondary-controls",
-                                ),
-                            ],
-                            className="spread-row",
-                        ),
-                    ],
-                    className="below-chart-controls crisis-controls-box",
-                ),
                 html.Div(
                     [
                         html.Div(
@@ -1845,35 +1764,65 @@ app.layout = html.Div(
                                 html.Div("Macro indicators", className="row-tag"),
                                 html.Div(
                                     [
-                                        dcc.Checklist(
-                                            id="show-fed-rate",
-                                            options=[{"label": "Federal Reserve Rate", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-fed-rate",
+                                                    options=[{"label": "Federal Reserve Rate", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="fed-rate-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
                                         ),
-                                        dcc.Checklist(
-                                            id="show-inflation",
-                                            options=[{"label": "Core PCE Inflation", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-inflation",
+                                                    options=[{"label": "Core PCE Inflation", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="inflation-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
                                         ),
-                                        dcc.Checklist(
-                                            id="show-unemployment",
-                                            options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-unemployment",
+                                                    options=[{"label": "U-3 Unemployment Rate", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="unemployment-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
                                         ),
-                                        dcc.Checklist(
-                                            id="show-u6-unemployment",
-                                            options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-u6-unemployment",
+                                                    options=[{"label": "U-6 Unemployment Rate", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="u6-unemployment-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
                                         ),
-                                        dcc.Checklist(
-                                            id="show-unemp-ind",
-                                            options=[{"label": "U3-NROU Unemployment", "value": "on"}],
-                                            value=[],
-                                            className="control-group",
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-unemp-ind",
+                                                    options=[{"label": "U3-NROU Unemployment", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="unemp-ind-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
                                         ),
                                     ],
                                     className="secondary-controls",
@@ -1884,6 +1833,8 @@ app.layout = html.Div(
                     ],
                     className="below-chart-controls macro-controls-box",
                 ),
+                html.Div(style={"height": "8px"}),
+                dcc.Graph(id="indicator-graph"),
                 html.Div(
                     [
                         html.Div(
@@ -1984,9 +1935,9 @@ app.layout = html.Div(
                                                     id="vol-median-select",
                                                     options=[
                                                         {"label": "No overlay", "value": "none"},
-                                                        {"label": "3Y median overlay", "value": "3y_median"},
-                                                        {"label": "10Y median overlay", "value": "10y_median"},
-                                                        {"label": "15Y median overlay", "value": "15y_median"},
+                                                        {"label": "3M average overlay", "value": "3m_mean"},
+                                                        {"label": "6M average overlay", "value": "6m_mean"},
+                                                        {"label": "1Y average overlay", "value": "1y_mean"},
                                                         {"label": "3Y average overlay", "value": "3y_mean"},
                                                         {"label": "10Y average overlay", "value": "10y_mean"},
                                                         {"label": "15Y average overlay", "value": "15y_mean"},
@@ -2273,6 +2224,47 @@ STATUS_DOT_COLOR_FNS = {
 
 
 @app.callback(
+    Output("fed-rate-current-value", "children"),
+    Output("inflation-current-value", "children"),
+    Output("unemployment-current-value", "children"),
+    Output("u6-unemployment-current-value", "children"),
+    Output("unemp-ind-current-value", "children"),
+    Input("refresh-token", "data"),
+)
+def update_macro_current_values(_refresh_token):
+    def _format(series: pd.Series, suffix: str = "%") -> str:
+        s = pd.to_numeric(series, errors="coerce").dropna()
+        if s.empty:
+            return "Current: N/A"
+        return f"Current: {float(s.iloc[-1]):.2f}{suffix}"
+
+    fed_df = load_and_process_csv("data/fedrate.csv")
+    fed_value = _format(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "Current: N/A"
+
+    infl_df = load_and_process_csv("data/inflation.csv")
+    infl_value = _format(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "Current: N/A"
+
+    unrate_df = load_and_process_csv("data/unemployment.csv")
+    if not unrate_df.empty and "UNRATE" in unrate_df.columns:
+        unrate_value = _format(unrate_df["UNRATE"])
+    else:
+        unrate_value = "Current: N/A"
+
+    if not unrate_df.empty and "U6RATE" in unrate_df.columns:
+        u6_value = _format(unrate_df["U6RATE"])
+    else:
+        u6_value = "Current: N/A"
+
+    if not unrate_df.empty and {"UNRATE", "NROU"}.issubset(unrate_df.columns):
+        unemp_indicator = pd.to_numeric(unrate_df["UNRATE"], errors="coerce") - pd.to_numeric(unrate_df["NROU"], errors="coerce")
+        unemp_ind_value = _format(unemp_indicator, suffix="")
+    else:
+        unemp_ind_value = "Current: N/A"
+
+    return fed_value, infl_value, unrate_value, u6_value, unemp_ind_value
+
+
+@app.callback(
     [Output(f"{k}-status-dot-{i}", "style") for k in STATUS_DOT_KEYS for i in range(1, 6)],
     Input("refresh-token", "data"),
 )
@@ -2315,11 +2307,6 @@ def update_vix_status_dots(_refresh_token):
     Output("timeline-slider", "value"),
     Output("active-preset", "data"),
     [Input(f"preset-{p}", "n_clicks") for p in PRESETS],
-    Input("show-crisis-dotcom", "value"),
-    Input("show-crisis-gfc", "value"),
-    Input("show-crisis-eu-debt", "value"),
-    Input("show-crisis-covid", "value"),
-    Input("show-crisis-us-banking", "value"),
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("timeline-slider", "value"),
@@ -2331,15 +2318,10 @@ def apply_preset(*args):
     if not trigger:
         return no_update, no_update, no_update, no_update
     rest = args[len(PRESETS):]
-    crisis_dotcom_val = rest[0]
-    crisis_gfc_val = rest[1]
-    crisis_eu_debt_val = rest[2]
-    crisis_covid_val = rest[3]
-    crisis_us_banking_val = rest[4]
-    start_date_str = rest[5]
-    end_date_str = rest[6]
-    slider_range = rest[7]
-    relayout_data = rest[8]
+    start_date_str = rest[0]
+    end_date_str = rest[1]
+    slider_range = rest[2]
+    relayout_data = rest[3]
 
     if str(trigger).startswith("preset-"):
         preset = str(trigger).replace("preset-", "")
@@ -2349,61 +2331,6 @@ def apply_preset(*args):
             date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
         ]
         return start_date, end_date, slider_value, preset
-
-    if trigger == "show-crisis-dotcom":
-        if "on" in (crisis_dotcom_val or []):
-            start_date = max(timeline_min_dt, pd.Timestamp("2000-01-01")).date().isoformat()
-            end_date = pd.Timestamp(max_dt).date().isoformat()
-            slider_value = [
-                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-            ]
-            return start_date, end_date, slider_value, None
-        return no_update, no_update, no_update, no_update
-
-    if trigger == "show-crisis-gfc":
-        if "on" in (crisis_gfc_val or []):
-            start_date = max(timeline_min_dt, pd.Timestamp("2006-07-01")).date().isoformat()
-            end_date = pd.Timestamp(max_dt).date().isoformat()
-            slider_value = [
-                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-            ]
-            return start_date, end_date, slider_value, None
-        return no_update, no_update, no_update, no_update
-
-    if trigger == "show-crisis-eu-debt":
-        if "on" in (crisis_eu_debt_val or []):
-            start_date = max(timeline_min_dt, pd.Timestamp("2009-01-01")).date().isoformat()
-            end_date = pd.Timestamp(max_dt).date().isoformat()
-            slider_value = [
-                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-            ]
-            return start_date, end_date, slider_value, None
-        return no_update, no_update, no_update, no_update
-
-    if trigger == "show-crisis-covid":
-        if "on" in (crisis_covid_val or []):
-            start_date = max(timeline_min_dt, pd.Timestamp("2019-07-01")).date().isoformat()
-            end_date = pd.Timestamp(max_dt).date().isoformat()
-            slider_value = [
-                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-            ]
-            return start_date, end_date, slider_value, None
-        return no_update, no_update, no_update, no_update
-
-    if trigger == "show-crisis-us-banking":
-        if "on" in (crisis_us_banking_val or []):
-            start_date = max(timeline_min_dt, pd.Timestamp("2022-07-01")).date().isoformat()
-            end_date = pd.Timestamp(max_dt).date().isoformat()
-            slider_value = [
-                date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-                date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-            ]
-            return start_date, end_date, slider_value, None
-        return no_update, no_update, no_update, no_update
 
     if trigger == "timeline-slider":
         if not slider_range or len(slider_range) != 2:
@@ -3144,7 +3071,6 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
 
 @app.callback(
     Output("indicator-graph", "figure"),
-    Output("latest-indicators", "children"),
     Output("warning-message", "children"),
     Input("selected-maturities", "data"),
     Input("show-spread-state", "data"),
@@ -3185,11 +3111,6 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-unemployment", "value"),
     Input("show-u6-unemployment", "value"),
     Input("show-unemp-ind", "value"),
-    Input("show-crisis-dotcom", "value"),
-    Input("show-crisis-gfc", "value"),
-    Input("show-crisis-eu-debt", "value"),
-    Input("show-crisis-covid", "value"),
-    Input("show-crisis-us-banking", "value"),
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("refresh-token", "data"),
@@ -3234,11 +3155,6 @@ def update_visuals(
     show_unemployment_val,
     show_u6_unemployment_val,
     show_unemp_ind_val,
-    show_crisis_dotcom_val,
-    show_crisis_gfc_val,
-    show_crisis_eu_debt_val,
-    show_crisis_covid_val,
-    show_crisis_us_banking_val,
     start_date_str,
     end_date_str,
     _refresh_token,
@@ -3279,11 +3195,6 @@ def update_visuals(
     show_unemployment = "on" in (show_unemployment_val or [])
     show_u6_unemployment = "on" in (show_u6_unemployment_val or [])
     show_unemp_ind = "on" in (show_unemp_ind_val or [])
-    show_crisis_dotcom = "on" in (show_crisis_dotcom_val or [])
-    show_crisis_gfc = "on" in (show_crisis_gfc_val or [])
-    show_crisis_eu_debt = "on" in (show_crisis_eu_debt_val or [])
-    show_crisis_covid = "on" in (show_crisis_covid_val or [])
-    show_crisis_us_banking = "on" in (show_crisis_us_banking_val or [])
 
     selected_maturities = selected_maturities or []
 
@@ -3293,7 +3204,7 @@ def update_visuals(
         fig.update_layout(title="No Treasury data found. Ensure data/ust.csv exists.")
         with chart_dataset_lock:
             chart_dataset_cache["csv"] = "date\n"
-        return fig, [], "No Treasury data found."
+        return fig, "No Treasury data found."
 
     for col in SERIES.values():
         if col in ust_df.columns:
@@ -3492,56 +3403,66 @@ def update_visuals(
         vol_median_mode=vol_median_mode,
     )
     fig.update_xaxes(range=[start_date.isoformat(), end_date.isoformat()])
-    if show_crisis_dotcom:
-        fig.add_vrect(
-            x0="2000-03-01",
-            x1="2002-03-31",
-            fillcolor="rgba(239, 68, 68, 0.14)",
-            opacity=0.28,
-            line_color="rgba(185, 28, 28, 0.75)",
-            line_width=1,
-            layer="above",
-        )
-    if show_crisis_gfc:
-        fig.add_vrect(
-            x0="2007-08-01",
-            x1="2009-08-31",
-            fillcolor="rgba(239, 68, 68, 0.14)",
-            opacity=0.28,
-            line_color="rgba(185, 28, 28, 0.75)",
-            line_width=1,
-            layer="above",
-        )
-    if show_crisis_eu_debt:
-        fig.add_vrect(
-            x0="2010-01-01",
-            x1="2013-12-31",
-            fillcolor="rgba(239, 68, 68, 0.14)",
-            opacity=0.28,
-            line_color="rgba(185, 28, 28, 0.75)",
-            line_width=1,
-            layer="above",
-        )
-    if show_crisis_covid:
-        fig.add_vrect(
-            x0="2020-01-01",
-            x1="2020-05-31",
-            fillcolor="rgba(239, 68, 68, 0.14)",
-            opacity=0.28,
-            line_color="rgba(185, 28, 28, 0.75)",
-            line_width=1,
-            layer="above",
-        )
-    if show_crisis_us_banking:
-        fig.add_vrect(
-            x0="2023-03-01",
-            x1="2023-07-31",
-            fillcolor="rgba(239, 68, 68, 0.14)",
-            opacity=0.28,
-            line_color="rgba(185, 28, 28, 0.75)",
-            line_width=1,
-            layer="above",
-        )
+    fig.add_vrect(
+        x0="2000-03-01",
+        x1="2002-03-31",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_vrect(
+        x0="2007-08-01",
+        x1="2009-08-31",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_vrect(
+        x0="2010-01-01",
+        x1="2013-12-31",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_vrect(
+        x0="2020-01-01",
+        x1="2020-05-31",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_vrect(
+        x0="2023-03-01",
+        x1="2023-07-31",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_vrect(
+        x0="2025-04-01",
+        x1="2025-04-30",
+        fillcolor="rgba(59, 130, 246, 0.12)",
+        opacity=0.26,
+        line_color="rgba(37, 99, 235, 0.55)",
+        line_width=1,
+        layer="above",
+    )
+    fig.add_annotation(x="2001-03-16", y=1.0, xref="x", yref="paper", text="Dot Com Bubble", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    fig.add_annotation(x="2008-08-15", y=1.0, xref="x", yref="paper", text="Global Financial Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    fig.add_annotation(x="2012-01-01", y=1.0, xref="x", yref="paper", text="EU Debt Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    fig.add_annotation(x="2020-03-16", y=1.0, xref="x", yref="paper", text="COVID-19 Recession", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    fig.add_annotation(x="2023-05-16", y=1.0, xref="x", yref="paper", text="US Regional Banking Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    fig.add_annotation(x="2025-04-15", y=1.0, xref="x", yref="paper", text="Liberation Day", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
 
     export_series: list[tuple[str, pd.Series]] = []
 
@@ -3650,19 +3571,10 @@ def update_visuals(
             s = pd.Series(pd.to_numeric(s_df[z_col], errors="coerce").values, index=s_df["DATE"], name=key)
             export_series.append((key, s))
 
-    latest_cards = [
-        indicator_card("2Y T-bill yield", latest_non_null_value(ust_df, "BC_2YEAR")),
-        indicator_card("10Y T-bill yield", latest_non_null_value(ust_df, "BC_10YEAR")),
-        indicator_card("Core Inflation", latest_non_null_value(infl_monthly, "PCE_YoY")),
-        indicator_card("Fed Rate", latest_non_null_value(fed_monthly, "FED_RATE")),
-        indicator_card("U-3 Unemployment rate", latest_non_null_value(unrate_monthly, "UNRATE")),
-        indicator_card("U3-NROU", latest_non_null_value(unrate_monthly, "UNEMP_INDICATOR")),
-    ]
-
     with chart_dataset_lock:
         chart_dataset_cache["csv"] = series_items_to_csv_text(export_series)
 
-    return fig, latest_cards, warning
+    return fig, warning
 
 
 if __name__ == "__main__":
