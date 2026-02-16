@@ -502,12 +502,24 @@ def build_figure(
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
-        changes = plot_fed[plot_fed["rate_changed"]]
-        if not changes.empty:
+        rate_delta = pd.to_numeric(plot_fed["FED_RATE"], errors="coerce").diff()
+        hikes = plot_fed[rate_delta > 0.001]
+        cuts = plot_fed[rate_delta < -0.001]
+        if not hikes.empty:
             fig.add_trace(
                 go.Scatter(
-                    x=changes["DATE"],
-                    y=changes["FED_RATE"],
+                    x=hikes["DATE"],
+                    y=hikes["FED_RATE"],
+                    mode="markers",
+                    marker={"color": "red", "size": 6},
+                    showlegend=False,
+                )
+            )
+        if not cuts.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=cuts["DATE"],
+                    y=cuts["FED_RATE"],
                     mode="markers",
                     marker={"color": "green", "size": 6},
                     showlegend=False,
@@ -726,6 +738,7 @@ def build_figure(
     if not plot_vol.empty:
         vix_plotted = False
         vxn_plotted = False
+        rvx_plotted = False
         vxeem_plotted = False
         skew_plotted = False
         gvz_plotted = False
@@ -762,6 +775,8 @@ def build_figure(
                 vix_plotted = True
             if key == "vxn" and not vol_series.dropna().empty:
                 vxn_plotted = True
+            if key == "rvx" and not vol_series.dropna().empty:
+                rvx_plotted = True
             if key == "vxeem" and not vol_series.dropna().empty:
                 vxeem_plotted = True
             if key == "skew" and not vol_series.dropna().empty:
@@ -937,6 +952,37 @@ def build_figure(
                 line_color="#FF0000",
                 line_width=1.4,
                 annotation_text="Above 50: Significant Market Fear)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#B91C1C"},
+            )
+        if rvx_plotted:
+            fig.add_hline(
+                y=20,
+                yref="y2",
+                line_dash="dash",
+                line_color="#16A34A",
+                line_width=1.4,
+                annotation_text="Below 20: Low fear/Complacency in small caps",
+                annotation_position="bottom left",
+                annotation_font={"size": 11, "color": "#166534"},
+            )
+            fig.add_hline(
+                y=30,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF8C00",
+                line_width=1.4,
+                annotation_text="30-40: Elevated stress (economic concerns impacting smaller firms)",
+                annotation_position="top left",
+                annotation_font={"size": 11, "color": "#C2410C"},
+            )
+            fig.add_hline(
+                y=50,
+                yref="y2",
+                line_dash="dash",
+                line_color="#FF0000",
+                line_width=1.4,
+                annotation_text="Above 50: Significant fear",
                 annotation_position="top left",
                 annotation_font={"size": 11, "color": "#B91C1C"},
             )
@@ -1748,18 +1794,6 @@ app.layout = html.Div(
     Output("timeline-slider", "value"),
     Output("active-preset", "data"),
     [Input(f"preset-{p}", "n_clicks") for p in PRESETS],
-    Input("vol-vix-btn", "n_clicks"),
-    Input("vol-vxn-btn", "n_clicks"),
-    Input("vol-rvx-btn", "n_clicks"),
-    Input("vol-vxeem-btn", "n_clicks"),
-    Input("vol-skew-btn", "n_clicks"),
-    Input("vol-gvz-btn", "n_clicks"),
-    Input("vol-ovx-btn", "n_clicks"),
-    Input("vol-stlfsi-btn", "n_clicks"),
-    Input("vol-hy_oas-btn", "n_clicks"),
-    Input("vol-ig_oas-btn", "n_clicks"),
-    Input("vol-move-btn", "n_clicks"),
-    Input("vol-dxy-btn", "n_clicks"),
     Input("show-crisis-dotcom", "value"),
     Input("show-crisis-gfc", "value"),
     Input("show-crisis-eu-debt", "value"),
@@ -1768,33 +1802,26 @@ app.layout = html.Div(
     Input("start-date", "date"),
     Input("end-date", "date"),
     Input("timeline-slider", "value"),
+    Input("indicator-graph", "relayoutData"),
     prevent_initial_call=True,
 )
 def apply_preset(*args):
     trigger = callback_context.triggered_id
     if not trigger:
         return no_update, no_update, no_update, no_update
-
-    crisis_dotcom_val = args[-8]
-    crisis_gfc_val = args[-7]
-    crisis_eu_debt_val = args[-6]
-    crisis_covid_val = args[-5]
-    crisis_us_banking_val = args[-4]
-    start_date_str = args[-3]
-    end_date_str = args[-2]
-    slider_range = args[-1]
+    rest = args[len(PRESETS):]
+    crisis_dotcom_val = rest[0]
+    crisis_gfc_val = rest[1]
+    crisis_eu_debt_val = rest[2]
+    crisis_covid_val = rest[3]
+    crisis_us_banking_val = rest[4]
+    start_date_str = rest[5]
+    end_date_str = rest[6]
+    slider_range = rest[7]
+    relayout_data = rest[8]
 
     if str(trigger).startswith("preset-"):
         preset = str(trigger).replace("preset-", "")
-        start_date, end_date = compute_preset_range(preset, timeline_min_dt, max_dt)
-        slider_value = [
-            date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
-            date_to_timeline_idx(end_date, timeline_min_dt, max_dt),
-        ]
-        return start_date, end_date, slider_value, preset
-
-    if str(trigger).startswith("vol-") and str(trigger).endswith("-btn"):
-        preset = "10Y"
         start_date, end_date = compute_preset_range(preset, timeline_min_dt, max_dt)
         slider_value = [
             date_to_timeline_idx(start_date, timeline_min_dt, max_dt),
@@ -1870,6 +1897,31 @@ def apply_preset(*args):
             return no_update, no_update, no_update, no_update
         start_dt = max(timeline_min_dt, min(max_dt, pd.Timestamp(start_date_str)))
         end_dt = max(timeline_min_dt, min(max_dt, pd.Timestamp(end_date_str)))
+        if start_dt > end_dt:
+            start_dt, end_dt = end_dt, start_dt
+        slider_value = [
+            date_to_timeline_idx(start_dt, timeline_min_dt, max_dt),
+            date_to_timeline_idx(end_dt, timeline_min_dt, max_dt),
+        ]
+        return start_dt.date().isoformat(), end_dt.date().isoformat(), slider_value, None
+
+    if trigger == "indicator-graph":
+        if not isinstance(relayout_data, dict):
+            return no_update, no_update, no_update, no_update
+        x0 = None
+        x1 = None
+        if "xaxis.range[0]" in relayout_data and "xaxis.range[1]" in relayout_data:
+            x0 = relayout_data.get("xaxis.range[0]")
+            x1 = relayout_data.get("xaxis.range[1]")
+        elif isinstance(relayout_data.get("xaxis.range"), list) and len(relayout_data["xaxis.range"]) == 2:
+            x0, x1 = relayout_data["xaxis.range"]
+        else:
+            return no_update, no_update, no_update, no_update
+        try:
+            start_dt = max(timeline_min_dt, min(max_dt, pd.Timestamp(x0)))
+            end_dt = max(timeline_min_dt, min(max_dt, pd.Timestamp(x1)))
+        except Exception:
+            return no_update, no_update, no_update, no_update
         if start_dt > end_dt:
             start_dt, end_dt = end_dt, start_dt
         slider_value = [
@@ -2820,11 +2872,8 @@ def update_visuals(
     plot_vol = filter_by_date(vol_resampled, start_date, end_date) if not vol_resampled.empty else pd.DataFrame()
 
     plot_fed = filter_by_date(fed_monthly, start_date, end_date)
-    if not plot_fed.empty and len(plot_fed) > 1:
+    if not plot_fed.empty:
         plot_fed["rate_changed"] = plot_fed["FED_RATE"].diff().abs() > 0.001
-        plot_fed.iloc[0, plot_fed.columns.get_loc("rate_changed")] = True
-    elif not plot_fed.empty:
-        plot_fed["rate_changed"] = True
 
     plot_infl = filter_by_date(infl_monthly, start_date, end_date)
 
@@ -2886,40 +2935,50 @@ def update_visuals(
             x0="2000-03-01",
             x1="2002-03-31",
             fillcolor="rgba(239, 68, 68, 0.14)",
-            line_width=0,
-            layer="below",
+            opacity=0.28,
+            line_color="rgba(185, 28, 28, 0.75)",
+            line_width=1,
+            layer="above",
         )
     if show_crisis_gfc:
         fig.add_vrect(
             x0="2007-08-01",
             x1="2009-08-31",
             fillcolor="rgba(239, 68, 68, 0.14)",
-            line_width=0,
-            layer="below",
+            opacity=0.28,
+            line_color="rgba(185, 28, 28, 0.75)",
+            line_width=1,
+            layer="above",
         )
     if show_crisis_eu_debt:
         fig.add_vrect(
             x0="2010-01-01",
             x1="2013-12-31",
             fillcolor="rgba(239, 68, 68, 0.14)",
-            line_width=0,
-            layer="below",
+            opacity=0.28,
+            line_color="rgba(185, 28, 28, 0.75)",
+            line_width=1,
+            layer="above",
         )
     if show_crisis_covid:
         fig.add_vrect(
             x0="2020-01-01",
             x1="2020-05-31",
             fillcolor="rgba(239, 68, 68, 0.14)",
-            line_width=0,
-            layer="below",
+            opacity=0.28,
+            line_color="rgba(185, 28, 28, 0.75)",
+            line_width=1,
+            layer="above",
         )
     if show_crisis_us_banking:
         fig.add_vrect(
             x0="2023-03-01",
             x1="2023-07-31",
             fillcolor="rgba(239, 68, 68, 0.14)",
-            line_width=0,
-            layer="below",
+            opacity=0.28,
+            line_color="rgba(185, 28, 28, 0.75)",
+            line_width=1,
+            layer="above",
         )
 
     export_series: list[tuple[str, pd.Series]] = []
