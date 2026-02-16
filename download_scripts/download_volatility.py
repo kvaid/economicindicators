@@ -315,6 +315,19 @@ def build_indicator_dataset(start: str = START_DATE,
     df = add_curve_features(df)
     df["cnn_fear_greed"] = build_cnn_fear_greed_proxy(df, helper_px)
 
+    # Keep a weekday-only calendar:
+    # if a source reports on weekend dates, shift to prior Friday.
+    weekend_mask = df.index.dayofweek >= 5
+    if weekend_mask.any():
+        shifted_index = df.index.copy()
+        shifted_index = shifted_index.where(~weekend_mask, shifted_index - pd.to_timedelta(shifted_index.dayofweek - 4, unit="D"))
+        df.index = pd.DatetimeIndex(shifted_index)
+        df = df.sort_index()
+        df = df.groupby(level=0).last()
+
+    # Final guard: drop any residual weekend dates.
+    df = df.loc[df.index.dayofweek < 5]
+
     # Optional: keep from 2007 onward even if some sources start later
     df = df.loc[pd.to_datetime(start):]
 

@@ -822,6 +822,7 @@ def build_figure(
                     mode="lines",
                     line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0},
                     yaxis="y2",
+                    connectgaps=True,
                     hovertemplate=f"{display_label}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                 )
             )
@@ -837,6 +838,7 @@ def build_figure(
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{overlay_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -852,6 +854,7 @@ def build_figure(
                         mode="lines",
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 2.0, "dash": "dot"},
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{overlay_hover}<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -867,6 +870,7 @@ def build_figure(
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.0, "dash": "dashdot"},
                         opacity=0.45,
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{display_label} {window_label} P10<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -881,6 +885,7 @@ def build_figure(
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.05)",
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{display_label} {window_label} P90<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -896,6 +901,7 @@ def build_figure(
                         line={"color": VOLATILITY_BUTTON_COLORS[key], "width": 1.2, "dash": "dash"},
                         opacity=0.55,
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{display_label} {window_label} P25<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -910,6 +916,7 @@ def build_figure(
                         fill="tonexty",
                         fillcolor="rgba(15, 23, 42, 0.08)",
                         yaxis="y2",
+                        connectgaps=True,
                         hovertemplate=f"{display_label} {window_label} P75<br>%{{x|%b %d, %Y}}<br>%{{y:.2f}}<extra></extra>",
                     )
                 )
@@ -917,6 +924,7 @@ def build_figure(
             fig.add_hrect(y0=0, y1=15, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
             fig.add_hrect(y0=25, y1=35, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=35, y1=50, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=15, y1=25, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=50, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
             fig.add_annotation(
                 xref="paper",
@@ -980,6 +988,7 @@ def build_figure(
             )
         if vxn_plotted:
             fig.add_hrect(y0=0, y1=20, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=20, y1=30, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=30, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=55, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1045,6 +1054,7 @@ def build_figure(
             )
         if rvx_plotted:
             fig.add_hrect(y0=0, y1=22, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=22, y1=32, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=32, y1=42, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=42, y1=58, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=58, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1110,6 +1120,7 @@ def build_figure(
             )
         if skew_plotted:
             fig.add_hrect(y0=0, y1=130, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=130, y1=145, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=145, y1=160, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=160, y1=175, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=175, y1=260, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1120,6 +1131,7 @@ def build_figure(
             fig.add_annotation(xref="paper", x=0.005, yref="y2", y=217.5, text="Extreme Tail-Risk Pricing", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if vxeem_plotted:
             fig.add_hrect(y0=0, y1=18, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=18, y1=28, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=28, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=55, y1=100, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1185,6 +1197,7 @@ def build_figure(
             )
         if gvz_plotted:
             fig.add_hrect(y0=0, y1=20, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=20, y1=30, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=30, y1=40, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=40, y1=55, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=55, y1=120, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1195,6 +1208,7 @@ def build_figure(
             fig.add_annotation(xref="paper", x=0.005, yref="y2", y=87.5, text="Extreme Stress / Panic", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if ovx_plotted:
             fig.add_hrect(y0=0, y1=35, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=35, y1=50, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=50, y1=70, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=70, y1=90, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=90, y1=160, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1205,6 +1219,7 @@ def build_figure(
             fig.add_annotation(xref="paper", x=0.005, yref="y2", y=125, text="Extreme Stress / Panic", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if stlfsi_plotted:
             fig.add_hrect(y0=-5, y1=-0.5, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=-0.5, y1=0.5, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=0.5, y1=2.0, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=2.0, y1=3.0, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=3.0, y1=6.0, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1246,6 +1261,7 @@ def build_figure(
             )
         if hy_oas_plotted:
             fig.add_hrect(y0=0, y1=3, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=3, y1=6, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=6, y1=8, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=8, y1=10, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=10, y1=20, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1256,6 +1272,7 @@ def build_figure(
             fig.add_annotation(xref="paper", x=0.005, yref="y2", y=15, text="Extreme Credit Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if move_plotted:
             fig.add_hrect(y0=0, y1=80, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
+            fig.add_hrect(y0=80, y1=100, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=100, y1=120, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=120, y1=140, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=140, y1=240, yref="y2", fillcolor="rgba(127, 29, 29, 0.16)", line_width=0, layer="below")
@@ -1266,6 +1283,7 @@ def build_figure(
             fig.add_annotation(xref="paper", x=0.005, yref="y2", y=190, text="Extreme Stress", showarrow=False, xanchor="left", yanchor="middle", font={"size": 11, "color": "#7F1D1D"}, bgcolor="rgba(255,255,255,0.65)")
         if dxy_plotted:
             fig.add_hrect(y0=0, y1=90, yref="y2", fillcolor="rgba(185, 28, 28, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=90, y1=100, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=100, y1=105, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=105, y1=110, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
             fig.add_hrect(y0=110, y1=150, yref="y2", fillcolor="rgba(21, 128, 61, 0.16)", line_width=0, layer="below")
@@ -1277,6 +1295,7 @@ def build_figure(
         if cnn_fear_greed_plotted:
             fig.add_hrect(y0=0, y1=25, yref="y2", fillcolor="rgba(185, 28, 28, 0.16)", line_width=0, layer="below")
             fig.add_hrect(y0=25, y1=45, yref="y2", fillcolor="rgba(194, 65, 12, 0.14)", line_width=0, layer="below")
+            fig.add_hrect(y0=45, y1=55, yref="y2", fillcolor="rgba(234, 179, 8, 0.14)", line_width=0, layer="below")
             fig.add_hrect(y0=55, y1=75, yref="y2", fillcolor="rgba(22, 163, 74, 0.12)", line_width=0, layer="below")
             fig.add_hrect(y0=75, y1=100, yref="y2", fillcolor="rgba(21, 128, 61, 0.16)", line_width=0, layer="below")
             fig.add_annotation(
@@ -1399,6 +1418,196 @@ def latest_non_null_value(df: pd.DataFrame, col: str) -> float | None:
     if series.empty:
         return None
     return float(series.iloc[-1])
+
+
+def _vix_dot_style(color: str) -> dict:
+    return {
+        "display": "inline-block",
+        "width": "12px",
+        "height": "12px",
+        "borderRadius": "50%",
+        "backgroundColor": color,
+        "border": "1px solid rgba(15, 23, 42, 0.22)",
+    }
+
+
+def _vix_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 15:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 25:
+        return "#EAB308"  # Normal / Watchful
+    if v < 35:
+        return "#C2410C"  # Elevated Stress
+    if v < 50:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _vxn_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 20:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 30:
+        return "#EAB308"  # Normal / Watchful
+    if v < 40:
+        return "#C2410C"  # Elevated Stress
+    if v < 55:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _rvx_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 22:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 32:
+        return "#EAB308"  # Normal / Watchful
+    if v < 42:
+        return "#C2410C"  # Elevated Stress
+    if v < 58:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _vxeem_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 18:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 28:
+        return "#EAB308"  # Normal / Watchful
+    if v < 40:
+        return "#C2410C"  # Elevated Stress
+    if v < 55:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _skew_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 130:
+        return "#16A34A"  # Low Tail-Risk Concern
+    if v < 145:
+        return "#EAB308"  # Watchful
+    if v < 160:
+        return "#C2410C"  # Elevated Tail-Risk Pricing
+    if v < 175:
+        return "#B91C1C"  # High Tail-Risk Concern
+    return "#7F1D1D"      # Extreme Tail-Risk Pricing
+
+
+def _move_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 80:
+        return "#16A34A"  # Low Rates Vol
+    if v < 100:
+        return "#EAB308"  # Watchful
+    if v < 120:
+        return "#C2410C"  # Elevated Uncertainty
+    if v < 140:
+        return "#B91C1C"  # High Stress
+    return "#7F1D1D"      # Extreme Stress
+
+
+def _hy_oas_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 3:
+        return "#16A34A"  # Low Credit Risk / Complacency
+    if v < 6:
+        return "#EAB308"  # Normal / Watchful
+    if v < 8:
+        return "#C2410C"  # Elevated Credit Stress
+    if v < 10:
+        return "#B91C1C"  # High Credit Stress
+    return "#7F1D1D"      # Extreme Credit Stress
+
+
+def _dxy_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 90:
+        return "#B91C1C"  # USD Weak Regime
+    if v < 100:
+        return "#EAB308"  # Neutral USD
+    if v < 105:
+        return "#C2410C"  # Moderately Strong USD
+    if v < 110:
+        return "#16A34A"  # Strong USD
+    return "#14532D"      # Extreme USD Strength
+
+
+def _cnn_fng_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 25:
+        return "#B91C1C"  # Extreme Fear
+    if v < 45:
+        return "#C2410C"  # Fear
+    if v < 55:
+        return "#EAB308"  # Neutral
+    if v < 75:
+        return "#16A34A"  # Greed
+    return "#14532D"      # Extreme Greed
+
+
+def _stlfsi_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < -0.5:
+        return "#16A34A"  # Easy Conditions
+    if v < 0.5:
+        return "#EAB308"  # Normal
+    if v < 2.0:
+        return "#C2410C"  # Elevated Stress
+    if v < 3.0:
+        return "#B91C1C"  # High Stress
+    return "#7F1D1D"      # Extreme Systemic Stress
+
+
+def _gvz_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 20:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 30:
+        return "#EAB308"  # Normal / Watchful
+    if v < 40:
+        return "#C2410C"  # Elevated Stress
+    if v < 55:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _ovx_color_from_value(v: float | None) -> str:
+    if v is None or pd.isna(v):
+        return "#D1D5DB"
+    if v < 35:
+        return "#16A34A"  # Low Vol / Complacency
+    if v < 50:
+        return "#EAB308"  # Normal / Watchful
+    if v < 70:
+        return "#C2410C"  # Elevated Stress
+    if v < 90:
+        return "#B91C1C"  # High Stress / Fear
+    return "#7F1D1D"      # Extreme Stress / Panic
+
+
+def _asof_value(series: pd.Series, target: pd.Timestamp) -> float | None:
+    s = pd.to_numeric(series, errors="coerce").dropna()
+    if s.empty:
+        return None
+    s = s.sort_index()
+    s = s.loc[:target]
+    if s.empty:
+        return None
+    return float(s.iloc[-1])
 
 
 def series_items_to_csv_text(series_items: list[tuple[str, pd.Series]]) -> str:
@@ -1795,7 +2004,78 @@ app.layout = html.Div(
                                             [
                                                 *[
                                                     html.Button(
-                                                        VOLATILITY_BUTTON_LABELS.get(col, col),
+                                                        (
+                                                            [
+                                                                html.Span(
+                                                                    [
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-1",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-2",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-3",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-4",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-5",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                    style={
+                                                                        "display": "inline-flex",
+                                                                        "alignItems": "center",
+                                                                        "gap": "4px",
+                                                                        "marginRight": "8px",
+                                                                    },
+                                                                ),
+                                                                html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                            ]
+                                                            if col in {"vix", "vxn", "rvx", "vxeem"}
+                                                            else VOLATILITY_BUTTON_LABELS.get(col, col)
+                                                        ),
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
                                                         className="maturity-btn",
@@ -1805,7 +2085,78 @@ app.layout = html.Div(
                                                 ],
                                                 *[
                                                     html.Button(
-                                                        VOLATILITY_BUTTON_LABELS.get(col, col),
+                                                        (
+                                                            [
+                                                                html.Span(
+                                                                    [
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-1",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-2",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-3",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-4",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                        html.Span(
+                                                                            id=f"{col}-status-dot-5",
+                                                                            style={
+                                                                                "display": "inline-block",
+                                                                                "width": "12px",
+                                                                                "height": "12px",
+                                                                                "borderRadius": "50%",
+                                                                                "backgroundColor": "#9CA3AF",
+                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
+                                                                            },
+                                                                        ),
+                                                                    ],
+                                                                    style={
+                                                                        "display": "inline-flex",
+                                                                        "alignItems": "center",
+                                                                        "gap": "4px",
+                                                                        "marginRight": "8px",
+                                                                    },
+                                                                ),
+                                                                html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                            ]
+                                                            if col in {"skew", "move", "hy_oas", "dxy", "cnn_fear_greed"}
+                                                            else VOLATILITY_BUTTON_LABELS.get(col, col)
+                                                        ),
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
                                                         className="maturity-btn",
@@ -1814,21 +2165,57 @@ app.layout = html.Div(
                                                     for col in ["skew", "move", "hy_oas", "dxy", "cnn_fear_greed"]
                                                 ],
                                                 html.Button(
-                                                    VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi"),
+                                                    [
+                                                        html.Span(
+                                                            [
+                                                                html.Span(id="stlfsi-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="stlfsi-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="stlfsi-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="stlfsi-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="stlfsi-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                            ],
+                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
+                                                        ),
+                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi")),
+                                                    ],
                                                     id="vol-stlfsi-btn",
                                                     n_clicks=0,
                                                     className="maturity-btn",
                                                     title=VOLATILITY_HOVER_LABELS.get("stlfsi", "stlfsi"),
                                                 ),
                                                 html.Button(
-                                                    VOLATILITY_BUTTON_LABELS.get("gvz", "gvz"),
+                                                    [
+                                                        html.Span(
+                                                            [
+                                                                html.Span(id="gvz-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="gvz-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="gvz-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="gvz-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="gvz-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                            ],
+                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
+                                                        ),
+                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("gvz", "gvz")),
+                                                    ],
                                                     id="vol-gvz-btn",
                                                     n_clicks=0,
                                                     className="maturity-btn",
                                                     title=VOLATILITY_HOVER_LABELS.get("gvz", "gvz"),
                                                 ),
                                                 html.Button(
-                                                    VOLATILITY_BUTTON_LABELS.get("ovx", "ovx"),
+                                                    [
+                                                        html.Span(
+                                                            [
+                                                                html.Span(id="ovx-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="ovx-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="ovx-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="ovx-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                                html.Span(id="ovx-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
+                                                            ],
+                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
+                                                        ),
+                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("ovx", "ovx")),
+                                                    ],
                                                     id="vol-ovx-btn",
                                                     n_clicks=0,
                                                     className="maturity-btn",
@@ -1852,6 +2239,74 @@ app.layout = html.Div(
     ],
     className="app-shell",
 )
+
+
+STATUS_DOT_KEYS = [
+    "vix",
+    "vxn",
+    "rvx",
+    "vxeem",
+    "skew",
+    "move",
+    "hy_oas",
+    "dxy",
+    "cnn_fear_greed",
+    "stlfsi",
+    "gvz",
+    "ovx",
+]
+
+STATUS_DOT_COLOR_FNS = {
+    "vix": _vix_color_from_value,
+    "vxn": _vxn_color_from_value,
+    "rvx": _rvx_color_from_value,
+    "vxeem": _vxeem_color_from_value,
+    "skew": _skew_color_from_value,
+    "move": _move_color_from_value,
+    "hy_oas": _hy_oas_color_from_value,
+    "dxy": _dxy_color_from_value,
+    "cnn_fear_greed": _cnn_fng_color_from_value,
+    "stlfsi": _stlfsi_color_from_value,
+    "gvz": _gvz_color_from_value,
+    "ovx": _ovx_color_from_value,
+}
+
+
+@app.callback(
+    [Output(f"{k}-status-dot-{i}", "style") for k in STATUS_DOT_KEYS for i in range(1, 6)],
+    Input("refresh-token", "data"),
+)
+def update_vix_status_dots(_refresh_token):
+    vol_df = load_and_process_csv("data/volatility.csv")
+    gray = _vix_dot_style("#D1D5DB")
+    if vol_df.empty:
+        return [gray for _ in range(len(STATUS_DOT_KEYS) * 5)]
+
+    def _series_from_col(col: str) -> pd.Series:
+        if col not in vol_df.columns:
+            return pd.Series(dtype="float64")
+        return pd.Series(
+            pd.to_numeric(vol_df[col], errors="coerce").values,
+            index=pd.to_datetime(vol_df["DATE"], errors="coerce"),
+        ).dropna()
+
+    def _five_colors(series: pd.Series, color_fn):
+        if series.empty:
+            return [gray, gray, gray, gray, gray]
+        latest_ts = pd.Timestamp(series.index.max())
+        vals = [
+            _asof_value(series, latest_ts - pd.DateOffset(weeks=4)),
+            _asof_value(series, latest_ts - pd.DateOffset(weeks=3)),
+            _asof_value(series, latest_ts - pd.DateOffset(weeks=2)),
+            _asof_value(series, latest_ts - pd.DateOffset(weeks=1)),
+            _asof_value(series, latest_ts),
+        ]
+        return [_vix_dot_style(color_fn(v)) for v in vals]
+
+    out = []
+    for key in STATUS_DOT_KEYS:
+        out.extend(_five_colors(_series_from_col(key), STATUS_DOT_COLOR_FNS[key]))
+    return out
 
 
 @app.callback(
@@ -2956,7 +3411,26 @@ def update_visuals(
     plot_ust = filter_by_date(ust_resampled, start_date, end_date)
     plot_ust["SPREAD_10Y_2Y"] = plot_ust["BC_10YEAR"] - plot_ust["BC_2YEAR"]
     plot_bond_yields = filter_by_date(bond_resampled, start_date, end_date) if not bond_resampled.empty else pd.DataFrame()
-    plot_vol = filter_by_date(vol_resampled, start_date, end_date) if not vol_resampled.empty else pd.DataFrame()
+    any_vol_selected = any(
+        [
+            show_vol_vix,
+            show_vol_vxn,
+            show_vol_rvx,
+            show_vol_vxeem,
+            show_vol_skew,
+            show_vol_gvz,
+            show_vol_ovx,
+            show_vol_stlfsi,
+            show_vol_hy_oas,
+            show_vol_ig_oas,
+            show_vol_move,
+            show_vol_dxy,
+            show_vol_cnn_fear_greed,
+        ]
+    )
+    use_daily_vol = any_vol_selected and delta.days <= 365
+    vol_source = vol_df if use_daily_vol else vol_resampled
+    plot_vol = filter_by_date(vol_source, start_date, end_date) if not vol_source.empty else pd.DataFrame()
 
     plot_fed = filter_by_date(fed_monthly, start_date, end_date)
     if not plot_fed.empty:
