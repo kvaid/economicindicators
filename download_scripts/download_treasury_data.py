@@ -62,46 +62,56 @@ def download_treasury_data() -> pd.DataFrame | None:
     existing = load_existing()
 
     if existing.empty:
-        fetch_start = "1990-01-01"
+        incremental_start = "1990-01-01"
         print("Full mode: no existing ust.csv found.")
     else:
         last_date = existing["date"].max()
-        fetch_start = (last_date - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-        print(f"Incremental mode: last saved date {last_date.date()}, fetch start {fetch_start}")
+        incremental_start = (last_date - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        print(f"Incremental mode: last saved date {last_date.date()}, fetch start {incremental_start}")
 
     fetch_end = datetime.now().strftime("%Y-%m-%d")
-    all_data: list[pd.DataFrame] = []
+    merged = existing.copy()
+    if merged.empty:
+        merged = pd.DataFrame(columns=["date"])
 
     for col_name, series_id in SERIES_IDS.items():
-        print(f"Downloading {col_name} ({series_id})...")
-        url = f"{base_url}?id={series_id}&cosd={fetch_start}&coed={fetch_end}"
+        needs_backfill = (
+            existing.empty
+            or col_name not in existing.columns
+            or existing[col_name].notna().sum() == 0
+        )
+        series_start = "1990-01-01" if needs_backfill else incremental_start
+        mode = "full backfill" if needs_backfill else "incremental"
+        print(f"Downloading {col_name} ({series_id}) [{mode}]...")
+        url = f"{base_url}?id={series_id}&cosd={series_start}&coed={fetch_end}"
         try:
             df = pd.read_csv(url)
             df["observation_date"] = pd.to_datetime(df["observation_date"])
             df = df.rename(columns={"observation_date": "DATE", series_id: col_name})
             df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
-            all_data.append(df)
+            series_df = df.rename(columns={"DATE": "date"})[["date", col_name]]
+            if col_name in merged.columns:
+                merged = merged.merge(
+                    series_df,
+                    on="date",
+                    how="outer",
+                    suffixes=("", "__new"),
+                )
+                merged[col_name] = pd.to_numeric(merged[f"{col_name}__new"], errors="coerce").combine_first(
+                    pd.to_numeric(merged[col_name], errors="coerce")
+                )
+                merged = merged.drop(columns=[f"{col_name}__new"])
+            else:
+                merged = merged.merge(series_df, on="date", how="outer")
             print(f"  OK Downloaded {len(df)} records")
         except Exception as exc:
             print(f"  ERROR downloading {series_id}: {exc}")
 
-    if not all_data:
+    if merged.empty:
         print("No data downloaded.")
         return None
 
-    merged_new = all_data[0]
-    for df in all_data[1:]:
-        merged_new = merged_new.merge(df, on="DATE", how="outer")
-    merged_new = merged_new.sort_values("DATE").reset_index(drop=True)
-    merged_new = merged_new.rename(columns={"DATE": "date"})
-    merged_new = enforce_daily_timeline(merged_new, date_col="date")
-
-    if not existing.empty:
-        merged = pd.concat([existing, merged_new], ignore_index=True)
-        merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
-    else:
-        merged = merged_new
-
+    merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
     merged = enforce_daily_timeline(merged, date_col="date")
     for col in OUTPUT_COLUMNS:
         if col not in merged.columns:

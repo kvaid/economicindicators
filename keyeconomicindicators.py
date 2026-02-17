@@ -42,6 +42,10 @@ CREDIT_YIELD_COLS = {
     "aaa_clo": "AAA_CLO:JAAA",
     "senior_loans": "SENIOR_LOANS:BKLN",
     "agency_mbs": "AGENCY_MBS:MBB",
+    "em_sov_hard": "EM_SOV_HARD:EMB",
+    "em_sov_local": "EM_SOV_LOCAL:ELD",
+    "money_market": "MONEY_MARKET:SGOV",
+    "tips_10y": "TIPS_10Y:TIP",
 }
 BOND_LINE_COLORS = {
     "us_ig_corp": "#A1D99B",
@@ -52,6 +56,10 @@ BOND_LINE_COLORS = {
     "aaa_clo": "#146B34",
     "senior_loans": "#0D572A",
     "agency_mbs": "#08441E",
+    "em_sov_hard": "#0E5A36",
+    "em_sov_local": "#166E44",
+    "money_market": "#2A8A56",
+    "tips_10y": "#3BA66B",
 }
 CREDIT_SPREAD_BUTTON_COLORS = {
     "us_ig_corp": "#F8B4B4",
@@ -319,6 +327,7 @@ def build_timeline_marks(min_date: pd.Timestamp, max_date: pd.Timestamp) -> dict
 
 def build_figure(
     plot_ust: pd.DataFrame,
+    plot_ust_raw: pd.DataFrame,
     plot_bond_yields: pd.DataFrame,
     plot_fed: pd.DataFrame,
     plot_infl: pd.DataFrame,
@@ -327,6 +336,7 @@ def build_figure(
     selected_maturities: list[str],
     show_yields: bool,
     show_spread: bool,
+    show_yield_curve: bool,
     show_us_ig_corp: bool,
     show_aaa_corp: bool,
     show_us_hy_corp: bool,
@@ -335,6 +345,10 @@ def build_figure(
     show_aaa_clo: bool,
     show_senior_loans: bool,
     show_agency_mbs: bool,
+    show_em_sov_hard: bool,
+    show_em_sov_local: bool,
+    show_money_market: bool,
+    show_tips_10y: bool,
     show_cs_us_ig_corp: bool,
     show_cs_aaa_corp: bool,
     show_cs_us_hy_corp: bool,
@@ -422,6 +436,18 @@ def build_figure(
         and CREDIT_YIELD_COLS["agency_mbs"] in plot_bond_yields.columns
     ):
         all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["agency_mbs"]].dropna().tolist())
+    for key, enabled in [
+        ("em_sov_hard", show_em_sov_hard),
+        ("em_sov_local", show_em_sov_local),
+        ("money_market", show_money_market),
+        ("tips_10y", show_tips_10y),
+    ]:
+        if (
+            enabled
+            and not plot_bond_yields.empty
+            and CREDIT_YIELD_COLS[key] in plot_bond_yields.columns
+        ):
+            all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS[key]].dropna().tolist())
     if not plot_bond_yields.empty and not plot_ust.empty and baseline_col in plot_ust.columns:
         cs_flags = {
             "us_ig_corp": show_cs_us_ig_corp,
@@ -490,6 +516,102 @@ def build_figure(
 
     fig = go.Figure()
 
+    if show_yield_curve:
+        curve_cols = [SERIES[m] for m in MATURITY_PRESETS if SERIES[m] in plot_ust_raw.columns]
+        curve_labels = [m for m in MATURITY_PRESETS if SERIES[m] in plot_ust_raw.columns]
+        curve_df = (
+            plot_ust_raw[["DATE"] + curve_cols]
+            .copy()
+            .dropna(how="all", subset=curve_cols)
+            .sort_values("DATE")
+        )
+        if curve_df.empty or not curve_cols:
+            fig.update_layout(
+                template="plotly_white",
+                title="No Treasury data available for yield curve view.",
+                height=450,
+                margin={"t": 36, "b": 40, "l": 52, "r": 52},
+            )
+            return fig
+
+        curve_df["DATE"] = pd.to_datetime(curve_df["DATE"], errors="coerce")
+        curve_df = curve_df.dropna(subset=["DATE"]).set_index("DATE").sort_index()
+        if curve_df.empty:
+            fig.update_layout(
+                template="plotly_white",
+                title="No Treasury data available for yield curve view.",
+                height=450,
+                margin={"t": 36, "b": 40, "l": 52, "r": 52},
+            )
+            return fig
+
+        latest_dt = curve_df.index.max()
+        row = curve_df.loc[latest_dt]
+        y_vals = [pd.to_numeric(row.get(col), errors="coerce") for col in curve_cols]
+        curve_vals = [float(v) for v in y_vals if pd.notna(v)]
+        point_labels = [f"{float(v):.2f}%" if pd.notna(v) else "" for v in y_vals]
+        fig.add_trace(
+            go.Scatter(
+                x=curve_labels,
+                y=y_vals,
+                name=f"Current ({latest_dt.date().isoformat()})",
+                mode="lines+markers+text",
+                text=point_labels,
+                textposition="top center",
+                textfont={"size": 11, "color": "#1f2a37"},
+                line={"color": "#1F5F93", "width": 2.6},
+                marker={"size": 7},
+                hovertemplate="%{fullData.name}<br>%{x}: %{y:.2f}%<extra></extra>",
+            )
+        )
+
+        if curve_vals:
+            cmin, cmax = min(curve_vals), max(curve_vals)
+            cpad = 0.08 * (cmax - cmin) if cmax != cmin else 0.5
+            curve_range = [cmin - cpad, cmax + cpad]
+        else:
+            curve_range = [0, 10]
+
+        fig.update_layout(
+            template="plotly_white",
+            font={"family": "Plus Jakarta Sans, Segoe UI, Arial, sans-serif", "size": 13, "color": "#1f2a37"},
+            xaxis_title="Maturity",
+            xaxis={
+                "type": "category",
+                "showgrid": False,
+                "linecolor": "rgba(15, 23, 42, 0.25)",
+            },
+            yaxis={
+                "title": "Yield (%)",
+                "side": "left",
+                "range": curve_range,
+                "tickformat": ".1f",
+                "showgrid": True,
+                "gridcolor": "rgba(15, 23, 42, 0.08)",
+                "zeroline": True,
+                "zerolinecolor": "rgba(15, 23, 42, 0.28)",
+                "linecolor": "rgba(15, 23, 42, 0.25)",
+            },
+            yaxis2={"visible": False},
+            hovermode="x unified",
+            hoverlabel={"bgcolor": "white", "font_size": 12, "font_family": "Plus Jakarta Sans, Segoe UI, Arial"},
+            legend={
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": 1.02,
+                "xanchor": "left",
+                "x": 0.0,
+                "bgcolor": "rgba(255,255,255,0.85)",
+                "bordercolor": "rgba(15, 23, 42, 0.15)",
+                "borderwidth": 1,
+            },
+            height=450,
+            margin={"t": 36, "b": 40, "l": 52, "r": 52},
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+        )
+        return fig
+
     if show_yields:
         for maturity in selected_maturities:
             fig.add_trace(
@@ -549,6 +671,23 @@ def build_figure(
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
+    for key, enabled, label in [
+        ("em_sov_hard", show_em_sov_hard, "EM SOV HARD BOND YIELD"),
+        ("em_sov_local", show_em_sov_local, "EM SOV LOCAL BOND YIELD"),
+        ("money_market", show_money_market, "MONEY MARKET BOND YIELD"),
+        ("tips_10y", show_tips_10y, "TIPS 10Y BOND YIELD"),
+    ]:
+        col = CREDIT_YIELD_COLS[key]
+        if enabled and not plot_bond_yields.empty and col in plot_bond_yields.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=plot_bond_yields["DATE"],
+                    y=plot_bond_yields[col],
+                    name=label,
+                    line={"color": BOND_LINE_COLORS[key], "width": 1.6},
+                    hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
+                )
+            )
     if (
         show_us_ig_corp
         and not plot_bond_yields.empty
@@ -1659,6 +1798,7 @@ app.layout = html.Div(
         dcc.Store(id="active-preset", data="1Y"),
         dcc.Store(id="selected-maturities", data=[]),
         dcc.Store(id="show-spread-state", data=False),
+        dcc.Store(id="show-yield-curve-state", data=False),
         dcc.Store(id="show-us-ig-corp-state", data=False),
         dcc.Store(id="show-aaa-corp-state", data=False),
         dcc.Store(id="show-us-hy-corp-state", data=False),
@@ -1667,6 +1807,10 @@ app.layout = html.Div(
         dcc.Store(id="show-aaa-clo-state", data=False),
         dcc.Store(id="show-senior-loans-state", data=False),
         dcc.Store(id="show-agency-mbs-state", data=False),
+        dcc.Store(id="show-em-sov-hard-state", data=False),
+        dcc.Store(id="show-em-sov-local-state", data=False),
+        dcc.Store(id="show-money-market-state", data=False),
+        dcc.Store(id="show-tips-10y-state", data=False),
         dcc.Store(id="show-cs-us-ig-corp-state", data=False),
         dcc.Store(id="show-cs-aaa-corp-state", data=False),
         dcc.Store(id="show-cs-us-hy-corp-state", data=False),
@@ -1846,6 +1990,7 @@ app.layout = html.Div(
                                         html.Div(
                                             [
                                                 html.Button(two_line_button_label("10Y-2Y", "yield-spread-current"), id="spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button("YIELD CURVE", id="yield-curve-btn", n_clicks=0, className="maturity-btn"),
                                                 *[
                                                     html.Button(
                                                         two_line_button_label(m, f"yield-maturity-{m}-current"),
@@ -1872,14 +2017,18 @@ app.layout = html.Div(
                                         html.Div("Bond Yields", className="row-tag"),
                                         html.Div(
                                             [
+                                                html.Button(two_line_button_label("MONEY MARKET", "yield-money-market-current"), id="money-market-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("IG CORP", "yield-us-ig-corp-current"), id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CORP", "yield-aaa-corp-current"), id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CLO", "yield-aaa-clo-current"), id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("HY CORP", "yield-us-hy-corp-current"), id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("HY MUNI", "yield-hy-muni-current"), id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("TIPS 10Y", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AGENCY MBS", "yield-agency-mbs-current"), id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("HY CORP", "yield-us-hy-corp-current"), id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("HY MUNI", "yield-hy-muni-current"), id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("EM SOV HARD", "yield-em-sov-hard-current"), id="em-sov-hard-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("EM SOV LOCAL", "yield-em-sov-local-current"), id="em-sov-local-yield-btn", n_clicks=0, className="maturity-btn"),
                                             ],
                                             className="spread-grid",
                                         ),
@@ -2331,6 +2480,10 @@ def update_macro_current_values(_refresh_token):
     Output("yield-aaa-clo-current", "children"),
     Output("yield-senior-loans-current", "children"),
     Output("yield-agency-mbs-current", "children"),
+    Output("yield-em-sov-hard-current", "children"),
+    Output("yield-em-sov-local-current", "children"),
+    Output("yield-money-market-current", "children"),
+    Output("yield-tips-10y-current", "children"),
     Input("refresh-token", "data"),
 )
 def update_yield_button_current_values(_refresh_token):
@@ -2384,6 +2537,10 @@ def update_yield_button_current_values(_refresh_token):
         _fmt_value(_bond_latest("aaa_clo")),
         _fmt_value(_bond_latest("senior_loans")),
         _fmt_value(_bond_latest("agency_mbs")),
+        _fmt_value(_bond_latest("em_sov_hard")),
+        _fmt_value(_bond_latest("em_sov_local")),
+        _fmt_value(_bond_latest("money_market")),
+        _fmt_value(_bond_latest("tips_10y")),
     )
 
 
@@ -2670,6 +2827,32 @@ def toggle_spread_button(_n_clicks: int, current_state: bool):
 
 
 @app.callback(
+    Output("show-yield-curve-state", "data"),
+    Output("yield-curve-btn", "className"),
+    Output("yield-curve-btn", "style"),
+    Input("yield-curve-btn", "n_clicks"),
+    State("show-yield-curve-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_yield_curve_button(_n_clicks: int, current_state: bool):
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    style = (
+        {
+            "background": "#fff",
+            "backgroundColor": "#fff",
+            "backgroundImage": "none",
+            "borderColor": "#1F5F93",
+            "borderWidth": "2px",
+            "color": "#1F5F93",
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
+@app.callback(
     Output("show-us-ig-corp-state", "data"),
     Output("ig-corp-spread-btn", "className"),
     Output("ig-corp-spread-btn", "style"),
@@ -2870,6 +3053,110 @@ def toggle_agency_mbs_button(_n_clicks: int, current_state: bool):
             "borderColor": BOND_LINE_COLORS["agency_mbs"],
             "borderWidth": "2px",
             "color": BOND_LINE_COLORS["agency_mbs"],
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
+@app.callback(
+    Output("show-em-sov-hard-state", "data"),
+    Output("em-sov-hard-yield-btn", "className"),
+    Output("em-sov-hard-yield-btn", "style"),
+    Input("em-sov-hard-yield-btn", "n_clicks"),
+    State("show-em-sov-hard-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_em_sov_hard_button(_n_clicks: int, current_state: bool):
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    style = (
+        {
+            "background": "#fff",
+            "backgroundColor": "#fff",
+            "backgroundImage": "none",
+            "borderColor": BOND_LINE_COLORS["em_sov_hard"],
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["em_sov_hard"],
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
+@app.callback(
+    Output("show-em-sov-local-state", "data"),
+    Output("em-sov-local-yield-btn", "className"),
+    Output("em-sov-local-yield-btn", "style"),
+    Input("em-sov-local-yield-btn", "n_clicks"),
+    State("show-em-sov-local-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_em_sov_local_button(_n_clicks: int, current_state: bool):
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    style = (
+        {
+            "background": "#fff",
+            "backgroundColor": "#fff",
+            "backgroundImage": "none",
+            "borderColor": BOND_LINE_COLORS["em_sov_local"],
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["em_sov_local"],
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
+@app.callback(
+    Output("show-money-market-state", "data"),
+    Output("money-market-yield-btn", "className"),
+    Output("money-market-yield-btn", "style"),
+    Input("money-market-yield-btn", "n_clicks"),
+    State("show-money-market-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_money_market_button(_n_clicks: int, current_state: bool):
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    style = (
+        {
+            "background": "#fff",
+            "backgroundColor": "#fff",
+            "backgroundImage": "none",
+            "borderColor": BOND_LINE_COLORS["money_market"],
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["money_market"],
+        }
+        if new_state
+        else {}
+    )
+    return new_state, cls, style
+
+
+@app.callback(
+    Output("show-tips-10y-state", "data"),
+    Output("tips-10y-yield-btn", "className"),
+    Output("tips-10y-yield-btn", "style"),
+    Input("tips-10y-yield-btn", "n_clicks"),
+    State("show-tips-10y-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_tips_10y_button(_n_clicks: int, current_state: bool):
+    new_state = not bool(current_state)
+    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
+    style = (
+        {
+            "background": "#fff",
+            "backgroundColor": "#fff",
+            "backgroundImage": "none",
+            "borderColor": BOND_LINE_COLORS["tips_10y"],
+            "borderWidth": "2px",
+            "color": BOND_LINE_COLORS["tips_10y"],
         }
         if new_state
         else {}
@@ -3273,6 +3560,7 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Output("warning-message", "children"),
     Input("selected-maturities", "data"),
     Input("show-spread-state", "data"),
+    Input("show-yield-curve-state", "data"),
     Input("show-us-ig-corp-state", "data"),
     Input("show-aaa-corp-state", "data"),
     Input("show-us-hy-corp-state", "data"),
@@ -3281,6 +3569,10 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-aaa-clo-state", "data"),
     Input("show-senior-loans-state", "data"),
     Input("show-agency-mbs-state", "data"),
+    Input("show-em-sov-hard-state", "data"),
+    Input("show-em-sov-local-state", "data"),
+    Input("show-money-market-state", "data"),
+    Input("show-tips-10y-state", "data"),
     Input("show-cs-us-ig-corp-state", "data"),
     Input("show-cs-aaa-corp-state", "data"),
     Input("show-cs-us-hy-corp-state", "data"),
@@ -3317,6 +3609,7 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
 def update_visuals(
     selected_maturities,
     show_spread_state,
+    show_yield_curve_state,
     show_us_ig_corp_state,
     show_aaa_corp_state,
     show_us_hy_corp_state,
@@ -3325,6 +3618,10 @@ def update_visuals(
     show_aaa_clo_state,
     show_senior_loans_state,
     show_agency_mbs_state,
+    show_em_sov_hard_state,
+    show_em_sov_local_state,
+    show_money_market_state,
+    show_tips_10y_state,
     show_cs_us_ig_corp_state,
     show_cs_aaa_corp_state,
     show_cs_us_hy_corp_state,
@@ -3360,6 +3657,7 @@ def update_visuals(
 ):
     show_yields = True
     show_spread = bool(show_spread_state)
+    show_yield_curve = bool(show_yield_curve_state)
     show_us_ig_corp = bool(show_us_ig_corp_state)
     show_aaa_corp = bool(show_aaa_corp_state)
     show_us_hy_corp = bool(show_us_hy_corp_state)
@@ -3368,6 +3666,10 @@ def update_visuals(
     show_aaa_clo = bool(show_aaa_clo_state)
     show_senior_loans = bool(show_senior_loans_state)
     show_agency_mbs = bool(show_agency_mbs_state)
+    show_em_sov_hard = bool(show_em_sov_hard_state)
+    show_em_sov_local = bool(show_em_sov_local_state)
+    show_money_market = bool(show_money_market_state)
+    show_tips_10y = bool(show_tips_10y_state)
     show_cs_us_ig_corp = bool(show_cs_us_ig_corp_state)
     show_cs_aaa_corp = bool(show_cs_aaa_corp_state)
     show_cs_us_hy_corp = bool(show_cs_us_hy_corp_state)
@@ -3519,6 +3821,7 @@ def update_visuals(
         bond_resampled = bond_yields_df
 
     plot_ust = filter_by_date(ust_resampled, start_date, end_date)
+    plot_ust_raw = filter_by_date(ust_df, start_date, end_date)
     plot_ust["SPREAD_10Y_2Y"] = plot_ust["BC_10YEAR"] - plot_ust["BC_2YEAR"]
     plot_bond_yields = filter_by_date(bond_resampled, start_date, end_date) if not bond_resampled.empty else pd.DataFrame()
     any_vol_selected = any(
@@ -3555,6 +3858,7 @@ def update_visuals(
 
     fig = build_figure(
         plot_ust=plot_ust,
+        plot_ust_raw=plot_ust_raw,
         plot_bond_yields=plot_bond_yields,
         plot_fed=plot_fed,
         plot_infl=plot_infl,
@@ -3563,6 +3867,7 @@ def update_visuals(
         selected_maturities=selected_maturities,
         show_yields=show_yields,
         show_spread=show_spread,
+        show_yield_curve=show_yield_curve,
         show_us_ig_corp=show_us_ig_corp,
         show_aaa_corp=show_aaa_corp,
         show_us_hy_corp=show_us_hy_corp,
@@ -3571,6 +3876,10 @@ def update_visuals(
         show_aaa_clo=show_aaa_clo,
         show_senior_loans=show_senior_loans,
         show_agency_mbs=show_agency_mbs,
+        show_em_sov_hard=show_em_sov_hard,
+        show_em_sov_local=show_em_sov_local,
+        show_money_market=show_money_market,
+        show_tips_10y=show_tips_10y,
         show_cs_us_ig_corp=show_cs_us_ig_corp,
         show_cs_aaa_corp=show_cs_aaa_corp,
         show_cs_us_hy_corp=show_cs_us_hy_corp,
@@ -3601,67 +3910,68 @@ def update_visuals(
         vol_band_mode=vol_band_mode,
         vol_median_mode=vol_median_mode,
     )
-    fig.update_xaxes(range=[start_date.isoformat(), end_date.isoformat()])
-    fig.add_vrect(
-        x0="2000-03-01",
-        x1="2002-03-31",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_vrect(
-        x0="2007-08-01",
-        x1="2009-08-31",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_vrect(
-        x0="2010-01-01",
-        x1="2013-12-31",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_vrect(
-        x0="2020-01-01",
-        x1="2020-05-31",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_vrect(
-        x0="2023-03-01",
-        x1="2023-07-31",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_vrect(
-        x0="2025-04-01",
-        x1="2025-04-30",
-        fillcolor="rgba(59, 130, 246, 0.12)",
-        opacity=0.26,
-        line_color="rgba(37, 99, 235, 0.55)",
-        line_width=1,
-        layer="above",
-    )
-    fig.add_annotation(x="2001-03-16", y=1.0, xref="x", yref="paper", text="Dot Com Bubble", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
-    fig.add_annotation(x="2008-08-15", y=1.0, xref="x", yref="paper", text="Global Financial Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
-    fig.add_annotation(x="2012-01-01", y=1.0, xref="x", yref="paper", text="EU Debt Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
-    fig.add_annotation(x="2020-03-16", y=1.0, xref="x", yref="paper", text="COVID-19 Recession", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
-    fig.add_annotation(x="2023-05-16", y=1.0, xref="x", yref="paper", text="US Regional Banking Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
-    fig.add_annotation(x="2025-04-15", y=1.0, xref="x", yref="paper", text="Liberation Day", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+    if not show_yield_curve:
+        fig.update_xaxes(range=[start_date.isoformat(), end_date.isoformat()])
+        fig.add_vrect(
+            x0="2000-03-01",
+            x1="2002-03-31",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_vrect(
+            x0="2007-08-01",
+            x1="2009-08-31",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_vrect(
+            x0="2010-01-01",
+            x1="2013-12-31",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_vrect(
+            x0="2020-01-01",
+            x1="2020-05-31",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_vrect(
+            x0="2023-03-01",
+            x1="2023-07-31",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_vrect(
+            x0="2025-04-01",
+            x1="2025-04-30",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            opacity=0.26,
+            line_color="rgba(37, 99, 235, 0.55)",
+            line_width=1,
+            layer="above",
+        )
+        fig.add_annotation(x="2001-03-16", y=1.0, xref="x", yref="paper", text="Dot Com Bubble", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+        fig.add_annotation(x="2008-08-15", y=1.0, xref="x", yref="paper", text="Global Financial Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+        fig.add_annotation(x="2012-01-01", y=1.0, xref="x", yref="paper", text="EU Debt Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+        fig.add_annotation(x="2020-03-16", y=1.0, xref="x", yref="paper", text="COVID-19 Recession", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+        fig.add_annotation(x="2023-05-16", y=1.0, xref="x", yref="paper", text="US Regional Banking Crisis", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
+        fig.add_annotation(x="2025-04-15", y=1.0, xref="x", yref="paper", text="Liberation Day", showarrow=False, xanchor="center", yanchor="bottom", yshift=6, font={"size": 11, "color": "#1D4ED8"})
 
     export_series: list[tuple[str, pd.Series]] = []
 
@@ -3688,6 +3998,10 @@ def update_visuals(
         ("aaa_clo", show_aaa_clo, "AAA_CLO"),
         ("senior_loans", show_senior_loans, "SENIOR LOANS"),
         ("agency_mbs", show_agency_mbs, "AGENCY MBS"),
+        ("em_sov_hard", show_em_sov_hard, "EM SOV HARD"),
+        ("em_sov_local", show_em_sov_local, "EM SOV LOCAL"),
+        ("money_market", show_money_market, "MONEY MARKET"),
+        ("tips_10y", show_tips_10y, "TIPS 10Y"),
     ]
     if not bond_yields_df.empty:
         for key, enabled, label in bond_flags:
