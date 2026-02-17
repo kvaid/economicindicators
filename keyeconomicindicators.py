@@ -15,7 +15,9 @@ SERIES = {
     "1Y": "BC_1YEAR",
     "2Y": "BC_2YEAR",
     "5Y": "BC_5YEAR",
+    "7Y": "BC_7YEAR",
     "10Y": "BC_10YEAR",
+    "20Y": "BC_20YEAR",
     "30Y": "BC_30YEAR",
 }
 MATURITY_PRESETS = list(SERIES.keys())
@@ -26,7 +28,9 @@ YIELD_COLORS = {
     "1Y": "#B7D7F5",
     "2Y": "#8EBFEA",
     "5Y": "#5B9EDB",
+    "7Y": "#3F88CC",
     "10Y": "#2E73B8",
+    "20Y": "#1C629E",
     "30Y": "#124A80",
 }
 CREDIT_YIELD_COLS = {
@@ -1857,7 +1861,12 @@ app.layout = html.Div(
                                     ],
                                     className="yield-row",
                                 ),
-                                html.Div("", className="row-spacer"),
+                            ],
+                            className="below-chart-controls treasury-controls-box",
+                        ),
+                        html.Div(
+                            [
+                                html.Div("", className="control-label"),
                                 html.Div(
                                     [
                                         html.Div("Bond Yields", className="row-tag"),
@@ -1878,7 +1887,7 @@ app.layout = html.Div(
                                     className="spread-row",
                                 ),
                             ],
-                            className="below-chart-controls",
+                            className="below-chart-controls bond-controls-box",
                         ),
                         html.Div("", className="row-spacer"),
                         html.Div(

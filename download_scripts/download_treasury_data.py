@@ -10,13 +10,25 @@ SERIES_IDS = {
     "BC_1YEAR": "DGS1",
     "BC_2YEAR": "DGS2",
     "BC_5YEAR": "DGS5",
+    "BC_7YEAR": "DGS7",
     "BC_10YEAR": "DGS10",
+    "BC_20YEAR": "DGS20",
     "BC_30YEAR": "DGS30",
 }
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent / "data"
 OUTPUT_FILE = DATA_DIR / "ust.csv"
+OUTPUT_COLUMNS = [
+    "date",
+    "BC_1YEAR",
+    "BC_2YEAR",
+    "BC_5YEAR",
+    "BC_7YEAR",
+    "BC_10YEAR",
+    "BC_20YEAR",
+    "BC_30YEAR",
+]
 
 
 def load_existing() -> pd.DataFrame:
@@ -24,7 +36,11 @@ def load_existing() -> pd.DataFrame:
         return pd.DataFrame()
     try:
         df = pd.read_csv(OUTPUT_FILE, parse_dates=["date"])
-        return df.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        for col in OUTPUT_COLUMNS:
+            if col not in df.columns:
+                df[col] = pd.NA
+        return df[OUTPUT_COLUMNS]
     except Exception:
         return pd.DataFrame()
 
@@ -87,6 +103,10 @@ def download_treasury_data() -> pd.DataFrame | None:
         merged = merged_new
 
     merged = enforce_daily_timeline(merged, date_col="date")
+    for col in OUTPUT_COLUMNS:
+        if col not in merged.columns:
+            merged[col] = pd.NA
+    merged = merged[OUTPUT_COLUMNS]
     print(f"Final dataset: {len(merged)} rows from {merged['date'].min()} to {merged['date'].max()}")
     return merged
 

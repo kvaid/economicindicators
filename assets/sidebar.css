@@ -397,7 +397,7 @@ body {
 }
 
 .below-chart-controls {
-  margin-top: 10px;
+  margin-top: 0;
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -405,13 +405,13 @@ body {
 }
 
 .macro-controls-box {
-  margin-top: 16px;
+  margin-top: 0;
   background: transparent;
   border: none;
 }
 
 .crisis-controls-box {
-  margin-top: 12px;
+  margin-top: 0;
   background: #ffe8ef;
   border-color: #efcdd8;
 }
@@ -420,7 +420,7 @@ body {
   margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .below-chart-controls-wrap > .row-spacer {
@@ -440,7 +440,7 @@ body {
 }
 
 .credit-spreads-box {
-  margin-top: 6px;
+  margin-top: 0;
   background: #eaf3ff;
   border-color: var(--border);
 }
@@ -455,8 +455,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  flex-direction: row;
+  gap: 8px;
   text-align: left;
   font-size: 0.80rem;
+}
+
+.volatility-box .spread-grid .maturity-btn > span:first-child {
+  order: 2;
+  margin-left: auto;
+  margin-right: 0 !important;
+}
+
+.volatility-box .spread-grid .maturity-btn > span:nth-child(2) {
+  order: 1;
 }
 
 .volatility-box .spread-grid .maturity-btn.maturity-btn-active {
@@ -608,9 +620,9 @@ body {
 
 .yield-row .maturity-grid {
   margin-bottom: 0;
-  gap: 4px;
+  gap: 3px;
   flex: 1 1 auto;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
 .spread-grid {
@@ -623,7 +635,7 @@ body {
 
 .yield-row .maturity-btn {
   font-size: 0.80rem;
-  padding: 5px 4px;
+  padding: 4px 3px;
 }
 
 .spread-row .maturity-btn {
