@@ -455,7 +455,7 @@ def build_figure(
         if selected_band_mode not in {"25_75", "10_90"}:
             selected_band_mode = "none"
         selected_median_mode = str(vol_median_mode or "").strip()
-        if selected_median_mode not in {"none", "3m_mean", "6m_mean", "1y_mean", "3y_mean", "10y_mean", "15y_mean"}:
+        if selected_median_mode not in {"none", "1m_mean", "3m_mean", "6m_mean", "1y_mean", "3y_mean", "10y_mean", "15y_mean"}:
             selected_median_mode = "none"
         vol_flags = {
             "vix": show_vol_vix,
@@ -542,7 +542,6 @@ def build_figure(
                 y=plot_ust["SPREAD_10Y_2Y"],
                 name="10Y-2Y Treasury Yield Spread",
                 line={"color": "#0B3A63", "width": 2, "dash": "dot"},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -557,7 +556,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["us_ig_corp"]],
                 name="IG CORP BOND YIELD",
                 line={"color": BOND_LINE_COLORS["us_ig_corp"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -572,7 +570,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["aaa_corp"]],
                 name="AAA CORP BOND YIELD",
                 line={"color": BOND_LINE_COLORS["aaa_corp"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -587,7 +584,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["us_hy_corp"]],
                 name="HY CORP BOND YIELD",
                 line={"color": BOND_LINE_COLORS["us_hy_corp"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -602,7 +598,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["ig_muni"]],
                 name="IG MUNI BOND YIELD",
                 line={"color": BOND_LINE_COLORS["ig_muni"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -617,7 +612,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["hy_muni"]],
                 name="HY MUNI BOND YIELD",
                 line={"color": BOND_LINE_COLORS["hy_muni"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -632,7 +626,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["aaa_clo"]],
                 name="AAA CLO BOND YIELD",
                 line={"color": BOND_LINE_COLORS["aaa_clo"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -647,7 +640,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["senior_loans"]],
                 name="SENIOR LOANS BOND YIELD",
                 line={"color": BOND_LINE_COLORS["senior_loans"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -662,7 +654,6 @@ def build_figure(
                 y=plot_bond_yields[CREDIT_YIELD_COLS["agency_mbs"]],
                 name="AGENCY MBS BOND YIELD",
                 line={"color": BOND_LINE_COLORS["agency_mbs"], "width": 1.6},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -690,7 +681,6 @@ def build_figure(
                     y=spread,
                     name=label,
                     line={"color": CREDIT_SPREAD_BUTTON_COLORS[key], "width": 1.6, "dash": "dot"},
-                    yaxis="y2",
                     hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
                 )
             )
@@ -701,7 +691,6 @@ def build_figure(
                 y=plot_infl["PCE_YoY"],
                 name="Core PCE Inflation",
                 line={"color": "#FF1F1F", "width": 2.4, "dash": "dot"},
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -714,7 +703,6 @@ def build_figure(
                 name="Unemployment Rate",
                 line={"color": "#F28C28", "width": 2, "dash": "dot"},
                 connectgaps=True,
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -727,7 +715,6 @@ def build_figure(
                 name="U-6 Unemployment Rate",
                 line={"color": "#8B5A2B", "width": 2, "dash": "dot"},
                 connectgaps=True,
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -740,7 +727,6 @@ def build_figure(
                 name="Unemp. Indicator (U3-NROU)",
                 line={"color": "#8B0000", "width": 2, "dash": "dot"},
                 connectgaps=True,
-                yaxis="y2",
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -809,6 +795,7 @@ def build_figure(
             if key == "cnn_fear_greed" and not vol_series.dropna().empty:
                 cnn_fear_greed_plotted = True
             window_map = {
+                "1m_mean": ("30D", "1M"),
                 "3m_mean": ("91D", "3M"),
                 "6m_mean": ("183D", "6M"),
                 "1y_mean": ("365D", "1Y"),
@@ -1350,7 +1337,6 @@ def build_figure(
     fig.update_layout(
         template="plotly_white",
         font={"family": "Plus Jakarta Sans, Segoe UI, Arial, sans-serif", "size": 13, "color": "#1f2a37"},
-        xaxis_title="Date",
         xaxis={
             "showgrid": True,
             "gridcolor": "rgba(15, 23, 42, 0.08)",
@@ -1625,9 +1611,19 @@ def series_items_to_csv_text(series_items: list[tuple[str, pd.Series]]) -> str:
     return out.to_csv(index=True, float_format="%.4f")
 
 
+def two_line_button_label(label: str, value_id: str):
+    return html.Span(
+        [
+            html.Span(label, className="btn-main-label"),
+            html.Span(id=value_id, className="btn-subvalue"),
+        ],
+        className="btn-stack",
+    )
+
+
 min_dt, max_dt = get_date_bounds()
 timeline_min_dt = max(min_dt, pd.to_datetime("2005-01-01"))
-default_start_str, default_end_str = compute_preset_range("5Y", timeline_min_dt, max_dt)
+default_start_str, default_end_str = compute_preset_range("1Y", timeline_min_dt, max_dt)
 default_start = pd.to_datetime(default_start_str)
 default_end = pd.to_datetime(default_end_str)
 timeline_total_days = max((max_dt - timeline_min_dt).days, 1)
@@ -1656,8 +1652,8 @@ def chart_dataset_csv():
 app.layout = html.Div(
     [
         dcc.Store(id="refresh-token", data=0),
-        dcc.Store(id="active-preset", data="5Y"),
-        dcc.Store(id="selected-maturities", data=["10Y"]),
+        dcc.Store(id="active-preset", data="1Y"),
+        dcc.Store(id="selected-maturities", data=[]),
         dcc.Store(id="show-spread-state", data=False),
         dcc.Store(id="show-us-ig-corp-state", data=False),
         dcc.Store(id="show-aaa-corp-state", data=False),
@@ -1675,7 +1671,7 @@ app.layout = html.Div(
         dcc.Store(id="show-cs-aaa-clo-state", data=False),
         dcc.Store(id="show-cs-senior-loans-state", data=False),
         dcc.Store(id="show-cs-agency-mbs-state", data=False),
-        dcc.Store(id="show-vol-vix-state", data=False),
+        dcc.Store(id="show-vol-vix-state", data=True),
         dcc.Store(id="show-vol-vxn-state", data=False),
         dcc.Store(id="show-vol-rvx-state", data=False),
         dcc.Store(id="show-vol-vxeem-state", data=False),
@@ -1845,8 +1841,16 @@ app.layout = html.Div(
                                         html.Div("Treasury Yields", className="row-tag"),
                                         html.Div(
                                             [
-                                                html.Button("10Y-2Y", id="spread-btn", n_clicks=0, className="maturity-btn"),
-                                                *[html.Button(m, id=f"maturity-{m}", n_clicks=0, className="maturity-btn") for m in MATURITY_PRESETS],
+                                                html.Button(two_line_button_label("10Y-2Y", "yield-spread-current"), id="spread-btn", n_clicks=0, className="maturity-btn"),
+                                                *[
+                                                    html.Button(
+                                                        two_line_button_label(m, f"yield-maturity-{m}-current"),
+                                                        id=f"maturity-{m}",
+                                                        n_clicks=0,
+                                                        className="maturity-btn",
+                                                    )
+                                                    for m in MATURITY_PRESETS
+                                                ],
                                             ],
                                             className="maturity-grid",
                                         ),
@@ -1859,14 +1863,14 @@ app.layout = html.Div(
                                         html.Div("Bond Yields", className="row-tag"),
                                         html.Div(
                                             [
-                                                html.Button("IG CORP", id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA CORP", id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("HY CORP", id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("IG MUNI", id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("HY MUNI", id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA CLO", id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("SENIOR LOANS", id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AGENCY MBS", id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("IG CORP", "yield-us-ig-corp-current"), id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("AAA CORP", "yield-aaa-corp-current"), id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("AAA CLO", "yield-aaa-clo-current"), id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("HY CORP", "yield-us-hy-corp-current"), id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("HY MUNI", "yield-hy-muni-current"), id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("AGENCY MBS", "yield-agency-mbs-current"), id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
                                             ],
                                             className="spread-grid",
                                         ),
@@ -1935,6 +1939,7 @@ app.layout = html.Div(
                                                     id="vol-median-select",
                                                     options=[
                                                         {"label": "No overlay", "value": "none"},
+                                                        {"label": "1M average overlay", "value": "1m_mean"},
                                                         {"label": "3M average overlay", "value": "3m_mean"},
                                                         {"label": "6M average overlay", "value": "6m_mean"},
                                                         {"label": "1Y average overlay", "value": "1y_mean"},
@@ -2022,14 +2027,32 @@ app.layout = html.Div(
                                                                         "marginRight": "8px",
                                                                     },
                                                                 ),
-                                                                html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                                html.Span(
+                                                                    [
+                                                                        html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                                        html.Span(id=f"vol-{col}-current-value", className="vol-btn-subvalue"),
+                                                                    ],
+                                                                    className="vol-btn-text-stack",
+                                                                ),
                                                             ]
                                                             if col in {"vix", "vxn", "rvx", "vxeem"}
                                                             else VOLATILITY_BUTTON_LABELS.get(col, col)
                                                         ),
                                                         id=f"vol-{col}-btn",
                                                         n_clicks=0,
-                                                        className="maturity-btn",
+                                                        className=("maturity-btn maturity-btn-active" if col == "vix" else "maturity-btn"),
+                                                        style=(
+                                                            {
+                                                                "background": "#fff",
+                                                                "backgroundColor": "#fff",
+                                                                "backgroundImage": "none",
+                                                                "borderColor": VOLATILITY_BUTTON_COLORS["vix"],
+                                                                "borderWidth": "2px",
+                                                                "color": VOLATILITY_BUTTON_COLORS["vix"],
+                                                            }
+                                                            if col == "vix"
+                                                            else {}
+                                                        ),
                                                         title=VOLATILITY_HOVER_LABELS.get(col, col),
                                                     )
                                                     for col in ["vix", "vxn", "rvx", "vxeem"]
@@ -2103,7 +2126,13 @@ app.layout = html.Div(
                                                                         "marginRight": "8px",
                                                                     },
                                                                 ),
-                                                                html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                                html.Span(
+                                                                    [
+                                                                        html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
+                                                                        html.Span(id=f"vol-{col}-current-value", className="vol-btn-subvalue"),
+                                                                    ],
+                                                                    className="vol-btn-text-stack",
+                                                                ),
                                                             ]
                                                             if col in {"skew", "move", "hy_oas", "dxy", "cnn_fear_greed"}
                                                             else VOLATILITY_BUTTON_LABELS.get(col, col)
@@ -2127,7 +2156,13 @@ app.layout = html.Div(
                                                             ],
                                                             style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
                                                         ),
-                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi")),
+                                                        html.Span(
+                                                            [
+                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi")),
+                                                                html.Span(id="vol-stlfsi-current-value", className="vol-btn-subvalue"),
+                                                            ],
+                                                            className="vol-btn-text-stack",
+                                                        ),
                                                     ],
                                                     id="vol-stlfsi-btn",
                                                     n_clicks=0,
@@ -2146,7 +2181,13 @@ app.layout = html.Div(
                                                             ],
                                                             style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
                                                         ),
-                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("gvz", "gvz")),
+                                                        html.Span(
+                                                            [
+                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("gvz", "gvz")),
+                                                                html.Span(id="vol-gvz-current-value", className="vol-btn-subvalue"),
+                                                            ],
+                                                            className="vol-btn-text-stack",
+                                                        ),
                                                     ],
                                                     id="vol-gvz-btn",
                                                     n_clicks=0,
@@ -2165,7 +2206,13 @@ app.layout = html.Div(
                                                             ],
                                                             style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
                                                         ),
-                                                        html.Span(VOLATILITY_BUTTON_LABELS.get("ovx", "ovx")),
+                                                        html.Span(
+                                                            [
+                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("ovx", "ovx")),
+                                                                html.Span(id="vol-ovx-current-value", className="vol-btn-subvalue"),
+                                                            ],
+                                                            className="vol-btn-text-stack",
+                                                        ),
                                                     ],
                                                     id="vol-ovx-btn",
                                                     n_clicks=0,
@@ -2235,33 +2282,119 @@ def update_macro_current_values(_refresh_token):
     def _format(series: pd.Series, suffix: str = "%") -> str:
         s = pd.to_numeric(series, errors="coerce").dropna()
         if s.empty:
-            return "Current: N/A"
-        return f"Current: {float(s.iloc[-1]):.2f}{suffix}"
+            return "--"
+        return f"{float(s.iloc[-1]):.2f}{suffix}"
 
     fed_df = load_and_process_csv("data/fedrate.csv")
-    fed_value = _format(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "Current: N/A"
+    fed_value = _format(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "--"
 
     infl_df = load_and_process_csv("data/inflation.csv")
-    infl_value = _format(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "Current: N/A"
+    infl_value = _format(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "--"
 
     unrate_df = load_and_process_csv("data/unemployment.csv")
     if not unrate_df.empty and "UNRATE" in unrate_df.columns:
         unrate_value = _format(unrate_df["UNRATE"])
     else:
-        unrate_value = "Current: N/A"
+        unrate_value = "--"
 
     if not unrate_df.empty and "U6RATE" in unrate_df.columns:
         u6_value = _format(unrate_df["U6RATE"])
     else:
-        u6_value = "Current: N/A"
+        u6_value = "--"
 
     if not unrate_df.empty and {"UNRATE", "NROU"}.issubset(unrate_df.columns):
         unemp_indicator = pd.to_numeric(unrate_df["UNRATE"], errors="coerce") - pd.to_numeric(unrate_df["NROU"], errors="coerce")
         unemp_ind_value = _format(unemp_indicator, suffix="")
     else:
-        unemp_ind_value = "Current: N/A"
+        unemp_ind_value = "--"
 
     return fed_value, infl_value, unrate_value, u6_value, unemp_ind_value
+
+
+@app.callback(
+    Output("yield-spread-current", "children"),
+    *[Output(f"yield-maturity-{m}-current", "children") for m in MATURITY_PRESETS],
+    Output("yield-us-ig-corp-current", "children"),
+    Output("yield-aaa-corp-current", "children"),
+    Output("yield-us-hy-corp-current", "children"),
+    Output("yield-ig-muni-current", "children"),
+    Output("yield-hy-muni-current", "children"),
+    Output("yield-aaa-clo-current", "children"),
+    Output("yield-senior-loans-current", "children"),
+    Output("yield-agency-mbs-current", "children"),
+    Input("refresh-token", "data"),
+)
+def update_yield_button_current_values(_refresh_token):
+    def _fmt_value(v: float | None) -> str:
+        if v is None or pd.isna(v):
+            return "--"
+        return f"{float(v):.2f}%"
+
+    ust_df = load_and_process_csv("data/ust.csv")
+    bond_df = load_and_process_csv("data/bondyields.csv")
+
+    spread_value = None
+    maturity_values: list[float | None] = []
+    if not ust_df.empty and {"BC_10YEAR", "BC_2YEAR"}.issubset(ust_df.columns):
+        ten = pd.to_numeric(ust_df["BC_10YEAR"], errors="coerce")
+        two = pd.to_numeric(ust_df["BC_2YEAR"], errors="coerce")
+        spread_series = (ten - two).dropna()
+        if not spread_series.empty:
+            spread_value = float(spread_series.iloc[-1])
+
+    if not ust_df.empty:
+        for m in MATURITY_PRESETS:
+            col = SERIES[m]
+            if col in ust_df.columns:
+                s = pd.to_numeric(ust_df[col], errors="coerce").dropna()
+                maturity_values.append(float(s.iloc[-1]) if not s.empty else None)
+            else:
+                maturity_values.append(None)
+    else:
+        maturity_values = [None for _ in MATURITY_PRESETS]
+
+    def _bond_latest(key: str) -> float | None:
+        if bond_df.empty:
+            return None
+        col = CREDIT_YIELD_COLS[key]
+        if col not in bond_df.columns:
+            return None
+        s = pd.to_numeric(bond_df[col], errors="coerce").dropna()
+        if s.empty:
+            return None
+        return float(s.iloc[-1])
+
+    return (
+        _fmt_value(spread_value),
+        *[_fmt_value(v) for v in maturity_values],
+        _fmt_value(_bond_latest("us_ig_corp")),
+        _fmt_value(_bond_latest("aaa_corp")),
+        _fmt_value(_bond_latest("us_hy_corp")),
+        _fmt_value(_bond_latest("ig_muni")),
+        _fmt_value(_bond_latest("hy_muni")),
+        _fmt_value(_bond_latest("aaa_clo")),
+        _fmt_value(_bond_latest("senior_loans")),
+        _fmt_value(_bond_latest("agency_mbs")),
+    )
+
+
+@app.callback(
+    *[Output(f"vol-{k}-current-value", "children") for k in STATUS_DOT_KEYS],
+    Input("refresh-token", "data"),
+)
+def update_volatility_button_current_values(_refresh_token):
+    vol_df = load_and_process_csv("data/volatility.csv")
+    if vol_df.empty:
+        return tuple("--" for _ in STATUS_DOT_KEYS)
+
+    out = []
+    for key in STATUS_DOT_KEYS:
+        if key not in vol_df.columns:
+            out.append("--")
+            continue
+        s = pd.to_numeric(vol_df[key], errors="coerce").dropna()
+        out.append(f"{float(s.iloc[-1]):.2f}" if not s.empty else "--")
+    return tuple(out)
 
 
 @app.callback(
@@ -2271,8 +2404,22 @@ def update_macro_current_values(_refresh_token):
 def update_vix_status_dots(_refresh_token):
     vol_df = load_and_process_csv("data/volatility.csv")
     gray = _vix_dot_style("#D1D5DB")
+    yellow = _vix_dot_style("#EAB308")
     if vol_df.empty:
         return [gray for _ in range(len(STATUS_DOT_KEYS) * 5)]
+
+    def _with_flash(style: dict) -> dict:
+        return {
+            **style,
+            "animationName": "statusDotFlash",
+            "animationDuration": "2.2s",
+            "animationTimingFunction": "ease-in-out",
+            "animationIterationCount": "infinite",
+        }
+
+    def _flash_if_red(style: dict) -> dict:
+        color = str(style.get("backgroundColor", "")).strip().lower()
+        return _with_flash(style) if color == "#dc2626" else style
 
     def _series_from_col(col: str) -> pd.Series:
         if col not in vol_df.columns:
@@ -2284,7 +2431,9 @@ def update_vix_status_dots(_refresh_token):
 
     def _five_colors(series: pd.Series, color_fn):
         if series.empty:
-            return [gray, gray, gray, gray, gray]
+            styles = [gray, gray, gray, gray, gray]
+            styles[4] = _flash_if_red(styles[4])
+            return styles
         latest_ts = pd.Timestamp(series.index.max())
         vals = [
             _asof_value(series, latest_ts - pd.DateOffset(weeks=4)),
@@ -2293,11 +2442,52 @@ def update_vix_status_dots(_refresh_token):
             _asof_value(series, latest_ts - pd.DateOffset(weeks=1)),
             _asof_value(series, latest_ts),
         ]
-        return [_vix_dot_style(color_fn(v)) for v in vals]
+        styles = [_vix_dot_style(color_fn(v)) for v in vals]
+        styles[4] = _flash_if_red(styles[4])
+        return styles
+
+    def _five_colors_wow(series: pd.Series, invert_red_green: bool = False):
+        if series.empty:
+            styles = [yellow, yellow, yellow, yellow, yellow]
+            styles[4] = _flash_if_red(styles[4])
+            return styles
+        s = series.sort_index()
+        weekly = s.resample("W-FRI").last().dropna()
+        if len(weekly) < 6:
+            styles = [yellow, yellow, yellow, yellow, yellow]
+            styles[4] = _flash_if_red(styles[4])
+            return styles
+        anchors = list(weekly.tail(6).index)  # [w5, w4, w3, w2, w1, w0]
+        vals = []
+        for a in anchors:
+            window = s.loc[(s.index >= a - pd.Timedelta(days=27)) & (s.index <= a)]
+            vals.append(float(window.mean()) if not window.empty else float("nan"))
+        deltas = [
+            vals[1] - vals[0],  # circle 1: 4W ago vs 5W ago
+            vals[2] - vals[1],  # circle 2: 3W ago vs 4W ago
+            vals[3] - vals[2],  # circle 3: 2W ago vs 3W ago
+            vals[4] - vals[3],  # circle 4: 1W ago vs 2W ago
+            vals[5] - vals[4],  # circle 5: most recent vs 1W ago
+        ]
+
+        def _delta_style(d):
+            if pd.isna(d) or d == 0:
+                return yellow
+            if invert_red_green:
+                if d > 0:
+                    return _vix_dot_style("#16A34A")
+                return _vix_dot_style("#DC2626")
+            if d > 0:
+                return _vix_dot_style("#DC2626")
+            return _vix_dot_style("#16A34A")
+
+        styles = [_delta_style(d) for d in deltas]
+        styles[4] = _flash_if_red(styles[4])
+        return styles
 
     out = []
     for key in STATUS_DOT_KEYS:
-        out.extend(_five_colors(_series_from_col(key), STATUS_DOT_COLOR_FNS[key]))
+        out.extend(_five_colors_wow(_series_from_col(key), invert_red_green=(key in {"dxy", "cnn_fear_greed"})))
     return out
 
 
@@ -2431,8 +2621,8 @@ def update_maturity_button_styles(selected):
             color = YIELD_COLORS.get(maturity, "#2E73B8")
             styles.append(
                 {
-                    "background": "transparent",
-                    "backgroundColor": "transparent",
+                    "background": "#fff",
+                    "backgroundColor": "#fff",
                     "backgroundImage": "none",
                     "borderColor": color,
                     "borderWidth": "2px",
@@ -2457,8 +2647,8 @@ def toggle_spread_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": "#0B3A63",
             "borderWidth": "2px",
@@ -2483,8 +2673,8 @@ def toggle_us_ig_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["us_ig_corp"],
             "borderWidth": "2px",
@@ -2509,8 +2699,8 @@ def toggle_aaa_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["aaa_corp"],
             "borderWidth": "2px",
@@ -2535,8 +2725,8 @@ def toggle_us_hy_corp_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["us_hy_corp"],
             "borderWidth": "2px",
@@ -2561,8 +2751,8 @@ def toggle_ig_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["ig_muni"],
             "borderWidth": "2px",
@@ -2587,8 +2777,8 @@ def toggle_hy_muni_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["hy_muni"],
             "borderWidth": "2px",
@@ -2613,8 +2803,8 @@ def toggle_aaa_clo_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["aaa_clo"],
             "borderWidth": "2px",
@@ -2639,8 +2829,8 @@ def toggle_senior_loans_button(_n_clicks: int, current_state: bool):
     cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
     style = (
         {
-            "background": "transparent",
-            "backgroundColor": "transparent",
+            "background": "#fff",
+            "backgroundColor": "#fff",
             "backgroundImage": "none",
             "borderColor": BOND_LINE_COLORS["senior_loans"],
             "borderWidth": "2px",
@@ -3015,8 +3205,8 @@ def toggle_volatility_buttons(
             color = VOLATILITY_BUTTON_COLORS[key]
             styles.append(
                 {
-                    "background": "transparent",
-                    "backgroundColor": "transparent",
+                    "background": "#fff",
+                    "backgroundColor": "#fff",
                     "backgroundImage": "none",
                     "borderColor": color,
                     "borderWidth": "2px",

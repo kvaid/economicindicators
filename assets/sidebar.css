@@ -171,6 +171,45 @@ body {
   letter-spacing: 0.03em;
 }
 
+.btn-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.05;
+}
+
+.btn-main-label {
+  display: block;
+}
+
+.btn-subvalue {
+  display: block;
+  font-size: 0.80rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.05;
+  text-transform: none;
+}
+
+.vol-btn-text-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.05;
+  text-transform: none;
+}
+
+.vol-btn-subvalue {
+  display: block;
+  font-size: 0.80rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.05;
+  text-transform: none;
+}
+
 .maturity-btn:hover {
   border-color: #9eb3c8;
   background: var(--panel-accent-soft);
@@ -402,14 +441,14 @@ body {
 
 .credit-spreads-box {
   margin-top: 6px;
-  background: #fff2e3;
-  border-color: #ecdcc9;
+  background: #eaf3ff;
+  border-color: var(--border);
 }
 
 .volatility-box {
   margin-top: 0;
-  background: #ffeceb;
-  border-color: #efc9c6;
+  background: #eaf3ff;
+  border-color: var(--border);
 }
 
 .volatility-box .spread-grid .maturity-btn {
@@ -417,16 +456,21 @@ body {
   align-items: center;
   justify-content: flex-start;
   text-align: left;
+  font-size: 0.80rem;
 }
 
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(1) { background: #be185d; border-color: #9d174d; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(2) { background: #0891b2; border-color: #0e7490; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(3) { background: #d97706; border-color: #b45309; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(4) { background: #dc2626; border-color: #b91c1c; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(5) { background: #6d28d9; border-color: #5b21b6; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(6) { background: #b45309; border-color: #92400e; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(7) { background: #0f766e; border-color: #115e59; color: #ffffff; }
-.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(8) { background: #374151; border-color: #1f2937; color: #ffffff; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active {
+  background: #fff;
+  background-image: none;
+}
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(1) { border-color: #9d174d; color: #9d174d; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(2) { border-color: #0e7490; color: #0e7490; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(3) { border-color: #b45309; color: #b45309; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(4) { border-color: #b91c1c; color: #b91c1c; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(5) { border-color: #5b21b6; color: #5b21b6; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(6) { border-color: #92400e; color: #92400e; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(7) { border-color: #115e59; color: #115e59; }
+.volatility-box .spread-grid .maturity-btn.maturity-btn-active:nth-child(8) { border-color: #1f2937; color: #1f2937; }
 
 .cs-baseline-dropdown {
   min-width: 84px;
@@ -578,12 +622,12 @@ body {
 }
 
 .yield-row .maturity-btn {
-  font-size: 0.72rem;
+  font-size: 0.80rem;
   padding: 5px 4px;
 }
 
 .spread-row .maturity-btn {
-  font-size: 0.72rem;
+  font-size: 0.80rem;
   padding: 5px 8px;
 }
 
@@ -602,7 +646,7 @@ body {
 }
 
 .secondary-controls .control-group label {
-  font-size: 0.74rem;
+  font-size: 0.80rem;
   font-weight: 600;
   gap: 6px;
   white-space: normal;
@@ -635,7 +679,7 @@ body {
 .macro-option-subvalue {
   margin-left: 19px;
   margin-top: 2px;
-  font-size: 0.66rem;
+  font-size: 0.80rem;
   font-weight: 500;
   color: var(--text-muted);
   line-height: 1.05;
@@ -643,6 +687,11 @@ body {
 
 .macro-metric-group .macro-checklist-inner {
   margin: 0;
+}
+
+@keyframes statusDotFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; transform: scale(0.82); }
 }
 
 .DateRangePicker_picker {
