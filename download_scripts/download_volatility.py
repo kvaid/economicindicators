@@ -14,6 +14,7 @@ Install:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -32,7 +33,6 @@ BASE_DIR = Path(__file__).resolve().parent
 OUT_DIR = BASE_DIR.parent / "data"
 OUT_CSV_COMBINED = OUT_DIR / "volatility.csv"
 CACHE_DIR = BASE_DIR.parent / ".cache" / "yfinance"
-FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
 ROUND_DIGITS = 2
 VOLATILITY_OUTPUT_ORDER = [
     "vix",
@@ -117,7 +117,10 @@ def fetch_fred_series(series_map: Dict[str, str],
     """
     Pull multiple FRED series into one DataFrame.
     """
-    fred_client = Fred(api_key=FRED_API_KEY)
+    fred_api_key = os.environ.get("FRED_API_KEY", "").strip()
+    if not fred_api_key:
+        raise RuntimeError("Missing FRED_API_KEY environment variable.")
+    fred_client = Fred(api_key=fred_api_key)
     frames: list[pd.DataFrame] = []
 
     for out_col, series_id in series_map.items():

@@ -3,6 +3,7 @@ Download Federal Reserve target rate data using fredapi and save to fedrate.csv.
 Builds a full authoritative monthly history each run for data integrity.
 """
 from datetime import datetime
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +13,12 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent / "data"
 OUTPUT_FILE = DATA_DIR / "fedrate.csv"
 TARGET_SERIES_CUTOFF = pd.Timestamp("2008-12-16")
-FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
+
+def get_fred_api_key() -> str:
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("Missing FRED_API_KEY environment variable.")
+    return key
 
 
 def load_existing() -> pd.DataFrame:
@@ -46,7 +52,7 @@ def download_fed_rate_data() -> pd.DataFrame | None:
     print(f"Full rebuild mode: fetch range {fetch_start} to {fetch_end}")
 
     try:
-        fred_client = Fred(api_key=FRED_API_KEY)
+        fred_client = Fred(api_key=get_fred_api_key())
 
         df_old = fetch_fred_series(fred_client, "DFEDTAR", fetch_start, fetch_end).set_index("observation_date")
         df_old = df_old[df_old.index < TARGET_SERIES_CUTOFF]

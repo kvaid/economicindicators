@@ -4,6 +4,7 @@ Download bond yield data from FRED and ETF sector proxies into one weekly CSV.
 from __future__ import annotations
 
 from datetime import datetime
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -19,7 +20,12 @@ START_DATE_FRED = "2000-01-01"
 START_DATE_ETF = "2005-01-01"
 WEEKLY_RULE = "W-FRI"
 ETF_YIELD_WINDOW_WEEKS = 52  # Set to 8 for a shorter rolling window.
-FRED_API_KEY = "69da3d502e36febadb1d149b360b8464"
+
+def get_fred_api_key() -> str:
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("Missing FRED_API_KEY environment variable.")
+    return key
 
 FRED_SERIES: dict[str, str] = {
     "ice_bofa_us_corporate_effective_yield": "BAMLC0A0CMEY",
@@ -54,7 +60,7 @@ def round_etf_proxy_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
 
 
 def download_fred_weekly(start_date: str, end_date: str) -> pd.DataFrame:
-    fred_client = Fred(api_key=FRED_API_KEY)
+    fred_client = Fred(api_key=get_fred_api_key())
     frames: list[pd.DataFrame] = []
     for out_col, series_id in FRED_SERIES.items():
         series = fred_client.get_series(
