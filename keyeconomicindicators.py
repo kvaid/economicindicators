@@ -360,61 +360,62 @@ def build_figure(
     vol_band_mode: str | None,
     vol_median_mode: str | None,
 ) -> go.Figure:
-    all_vals: list[float] = []
+    y1_vals: list[float] = []
+    y2_vals: list[float] = []
 
     if show_yields and selected_maturities:
         for maturity in selected_maturities:
-            all_vals.extend(plot_ust[SERIES[maturity]].dropna().tolist())
+            y1_vals.extend(plot_ust[SERIES[maturity]].dropna().tolist())
     if show_spread and not plot_ust.empty:
-        all_vals.extend(plot_ust["SPREAD_10Y_2Y"].dropna().tolist())
+        y1_vals.extend(plot_ust["SPREAD_10Y_2Y"].dropna().tolist())
     if (
         show_us_ig_corp
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["us_ig_corp"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["us_ig_corp"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["us_ig_corp"]].dropna().tolist())
     if (
         show_aaa_corp
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["aaa_corp"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["aaa_corp"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["aaa_corp"]].dropna().tolist())
     if (
         show_us_hy_corp
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["us_hy_corp"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["us_hy_corp"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["us_hy_corp"]].dropna().tolist())
     if (
         show_ig_muni
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["ig_muni"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["ig_muni"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["ig_muni"]].dropna().tolist())
     if (
         show_hy_muni
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["hy_muni"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["hy_muni"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["hy_muni"]].dropna().tolist())
     if (
         show_aaa_clo
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["aaa_clo"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["aaa_clo"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["aaa_clo"]].dropna().tolist())
     if (
         show_senior_loans
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["senior_loans"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["senior_loans"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["senior_loans"]].dropna().tolist())
     if (
         show_agency_mbs
         and not plot_bond_yields.empty
         and CREDIT_YIELD_COLS["agency_mbs"] in plot_bond_yields.columns
     ):
-        all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["agency_mbs"]].dropna().tolist())
+        y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS["agency_mbs"]].dropna().tolist())
     for key, enabled in [
         ("em_sov_hard", show_em_sov_hard),
         ("em_sov_local", show_em_sov_local),
@@ -426,17 +427,17 @@ def build_figure(
             and not plot_bond_yields.empty
             and CREDIT_YIELD_COLS[key] in plot_bond_yields.columns
         ):
-            all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS[key]].dropna().tolist())
+            y1_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS[key]].dropna().tolist())
     if show_inflation and not plot_infl.empty:
-        all_vals.extend(plot_infl["PCE_YoY"].dropna().tolist())
+        y1_vals.extend(plot_infl["PCE_YoY"].dropna().tolist())
     if show_unemployment and not plot_unrate.empty:
-        all_vals.extend(plot_unrate["UNRATE"].dropna().tolist())
+        y1_vals.extend(plot_unrate["UNRATE"].dropna().tolist())
     if show_u6_unemployment and not plot_unrate.empty and "U6RATE" in plot_unrate.columns:
-        all_vals.extend(plot_unrate["U6RATE"].dropna().tolist())
+        y1_vals.extend(plot_unrate["U6RATE"].dropna().tolist())
     if show_unemp_ind and not plot_unrate.empty:
-        all_vals.extend(plot_unrate["UNEMP_INDICATOR"].dropna().tolist())
+        y1_vals.extend(plot_unrate["UNEMP_INDICATOR"].dropna().tolist())
     if show_fed_rate and not plot_fed.empty:
-        all_vals.extend(plot_fed["FED_RATE"].dropna().tolist())
+        y1_vals.extend(plot_fed["FED_RATE"].dropna().tolist())
     if not plot_vol.empty:
         selected_band_mode = str(vol_band_mode or "").strip()
         if selected_band_mode not in {"25_75", "10_90"}:
@@ -462,14 +463,21 @@ def build_figure(
         for key, enabled in vol_flags.items():
             z_col = VOLATILITY_DATA_COLS[key]
             if enabled and z_col in plot_vol.columns:
-                all_vals.extend(pd.to_numeric(plot_vol[z_col], errors="coerce").dropna().tolist())
+                y2_vals.extend(pd.to_numeric(plot_vol[z_col], errors="coerce").dropna().tolist())
 
-    if all_vals:
-        v_min, v_max = min(all_vals), max(all_vals)
+    if y1_vals:
+        v_min, v_max = min(y1_vals), max(y1_vals)
         pad = 0.05 * (v_max - v_min) if v_max != v_min else 1.0
-        y_range = [v_min - pad, v_max + pad]
+        y1_range = [v_min - pad, v_max + pad]
     else:
-        y_range = [0, 10]
+        y1_range = [0, 10]
+
+    if y2_vals:
+        v2_min, v2_max = min(y2_vals), max(y2_vals)
+        pad2 = 0.05 * (v2_max - v2_min) if v2_max != v2_min else 1.0
+        y2_range = [v2_min - pad2, v2_max + pad2]
+    else:
+        y2_range = list(y1_range)
 
     fig = go.Figure()
 
@@ -1405,7 +1413,7 @@ def build_figure(
                 font={"size": 11, "color": "#14532D"},
                 bgcolor="rgba(255,255,255,0.65)",
             )
-            y_range = [min(y_range[0], 0.0), max(y_range[1], 100.0)]
+            y2_range = [min(y2_range[0], 0.0), max(y2_range[1], 100.0)]
 
     fig.update_layout(
         template="plotly_white",
@@ -1418,7 +1426,7 @@ def build_figure(
         yaxis={
             "title": "Yield (%)",
             "side": "left",
-            "range": y_range,
+            "range": y1_range,
             "tickformat": ".1f",
             "showgrid": True,
             "gridcolor": "rgba(15, 23, 42, 0.08)",
@@ -1431,7 +1439,7 @@ def build_figure(
             "side": "right",
             "overlaying": "y",
             "showgrid": False,
-            "range": y_range,
+            "range": y2_range,
             "tickformat": ".1f",
             "linecolor": "rgba(15, 23, 42, 0.25)",
         },
@@ -3452,7 +3460,7 @@ def update_visuals(
         start_date, end_date = min_date, max_date
 
     delta = end_date - start_date
-    if delta.days < 183:
+    if delta.days <= 365:
         freq = None
         freq_label = "Daily"
     elif delta.days <= 731:

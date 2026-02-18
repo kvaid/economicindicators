@@ -57,14 +57,8 @@ VOLATILITY_OUTPUT_ORDER = [
 # These IDs are standard FRED mnemonics.
 FRED_SERIES: Dict[str, str] = {
     # Equity implied vol
-    "vix": "VIXCLS",
-    "vxn": "VXNCLS",
     "rvx": "RVXCLS",
     "vxeem": "VXEEMCLS",
-
-    # Commodity implied vol
-    "gvz": "GVZCLS",   # gold vol index
-    "ovx": "OVXCLS",   # oil vol index
 
     # Broad financial stress / conditions
     "stlfsi": "STLFSI4",  # St. Louis Fed Financial Stress Index
@@ -80,6 +74,14 @@ FRED_SERIES: Dict[str, str] = {
 # Yahoo Finance tickers (via yfinance)
 # -----------------------------
 YF_TICKERS: Dict[str, str] = {
+    # Equity implied vol
+    "vix": "^VIX",
+    "vxn": "^VXN",
+
+    # Commodity implied vol
+    "gvz": "^GVZ",
+    "ovx": "^OVX",
+
     "move": "^MOVE",
     "skew": "^SKEW",
     "dxy": "DX-Y.NYB",
