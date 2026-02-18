@@ -1,0 +1,14 @@
+sector,ticker,error
+US_IG_CORP_PROXY,LQD,unable to open database file
+US_HY_CORP_PROXY,HYG,unable to open database file
+AAA_CORP_PROXY,QLTA,unable to open database file
+AAA_CLO,JAAA,unable to open database file
+SENIOR_LOANS,BKLN,unable to open database file
+AGENCY_MBS,MBB,unable to open database file
+EM_SOV_HARD,EMB,unable to open database file
+EM_SOV_LOCAL,ELD,unable to open database file
+MONEY_MARKET,SGOV,unable to open database file
+TIPS_10Y,TIP,unable to open database file
+CMBS,CMBS,unable to open database file
+IG_MUNIS,MUB,unable to open database file
+HY_MUNIS,HYD,unable to open database file

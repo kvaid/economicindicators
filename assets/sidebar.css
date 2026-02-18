@@ -431,18 +431,8 @@ body {
   order: 1;
 }
 
-.below-chart-controls-wrap > .below-chart-controls:not(.credit-spreads-box):not(.volatility-box) {
+.below-chart-controls-wrap > .below-chart-controls:not(.volatility-box) {
   order: 2;
-}
-
-.below-chart-controls-wrap > .credit-spreads-box {
-  order: 3;
-}
-
-.credit-spreads-box {
-  margin-top: 0;
-  background: #eaf3ff;
-  border-color: var(--border);
 }
 
 .volatility-box {
@@ -609,13 +599,6 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--panel-accent);
-}
-
-.credit-row-tag {
-  flex: 0 0 136px;
-  width: 136px;
-  white-space: normal;
-  line-height: 1.15;
 }
 
 .yield-row .maturity-grid {

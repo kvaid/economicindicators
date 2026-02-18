@@ -34,9 +34,9 @@ YIELD_COLORS = {
     "30Y": "#124A80",
 }
 CREDIT_YIELD_COLS = {
-    "us_ig_corp": "ice_bofa_us_corporate_effective_yield",
-    "aaa_corp": "ice_bofa_aaa_us_corporate_effective_yield",
-    "us_hy_corp": "ice_bofa_us_high_yield_effective_yield",
+    "us_ig_corp": "IG_CORP:LQD",
+    "aaa_corp": "AAA_CORP:QLTA",
+    "us_hy_corp": "HY_CORP:HYG",
     "ig_muni": "IG_MUNIS:MUB",
     "hy_muni": "HY_MUNIS:HYD",
     "aaa_clo": "AAA_CLO:JAAA",
@@ -45,7 +45,7 @@ CREDIT_YIELD_COLS = {
     "em_sov_hard": "EM_SOV_HARD:EMB",
     "em_sov_local": "EM_SOV_LOCAL:ELD",
     "money_market": "MONEY_MARKET:SGOV",
-    "tips_10y": "TIPS_10Y:TIP",
+    "tips_10y": "US_AGENCY:AGZ",
 }
 BOND_LINE_COLORS = {
     "us_ig_corp": "#A1D99B",
@@ -60,16 +60,6 @@ BOND_LINE_COLORS = {
     "em_sov_local": "#166E44",
     "money_market": "#2A8A56",
     "tips_10y": "#3BA66B",
-}
-CREDIT_SPREAD_BUTTON_COLORS = {
-    "us_ig_corp": "#F8B4B4",
-    "aaa_corp": "#F28B82",
-    "us_hy_corp": "#EF5350",
-    "ig_muni": "#E53935",
-    "hy_muni": "#D32F2F",
-    "aaa_clo": "#C62828",
-    "senior_loans": "#B71C1C",
-    "agency_mbs": "#8E0000",
 }
 VOLATILITY_COLS = [
     "vix",
@@ -349,15 +339,6 @@ def build_figure(
     show_em_sov_local: bool,
     show_money_market: bool,
     show_tips_10y: bool,
-    show_cs_us_ig_corp: bool,
-    show_cs_aaa_corp: bool,
-    show_cs_us_hy_corp: bool,
-    show_cs_ig_muni: bool,
-    show_cs_hy_muni: bool,
-    show_cs_aaa_clo: bool,
-    show_cs_senior_loans: bool,
-    show_cs_agency_mbs: bool,
-    cs_baseline_tenor: str,
     show_fed_rate: bool,
     show_inflation: bool,
     show_unemployment: bool,
@@ -380,8 +361,6 @@ def build_figure(
     vol_median_mode: str | None,
 ) -> go.Figure:
     all_vals: list[float] = []
-    baseline_tenor = cs_baseline_tenor if cs_baseline_tenor in SERIES else "10Y"
-    baseline_col = SERIES[baseline_tenor]
 
     if show_yields and selected_maturities:
         for maturity in selected_maturities:
@@ -448,28 +427,6 @@ def build_figure(
             and CREDIT_YIELD_COLS[key] in plot_bond_yields.columns
         ):
             all_vals.extend(plot_bond_yields[CREDIT_YIELD_COLS[key]].dropna().tolist())
-    if not plot_bond_yields.empty and not plot_ust.empty and baseline_col in plot_ust.columns:
-        cs_flags = {
-            "us_ig_corp": show_cs_us_ig_corp,
-            "aaa_corp": show_cs_aaa_corp,
-            "us_hy_corp": show_cs_us_hy_corp,
-            "ig_muni": show_cs_ig_muni,
-            "hy_muni": show_cs_hy_muni,
-            "aaa_clo": show_cs_aaa_clo,
-            "senior_loans": show_cs_senior_loans,
-            "agency_mbs": show_cs_agency_mbs,
-        }
-        base = plot_ust[["DATE", baseline_col]]
-        for key, enabled in cs_flags.items():
-            col = CREDIT_YIELD_COLS[key]
-            if not enabled or col not in plot_bond_yields.columns:
-                continue
-            s_df = plot_bond_yields[["DATE", col]].merge(base, on="DATE", how="left")
-            spread_vals = (
-                pd.to_numeric(s_df[col], errors="coerce")
-                - pd.to_numeric(s_df[baseline_col], errors="coerce")
-            ).dropna()
-            all_vals.extend(spread_vals.tolist())
     if show_inflation and not plot_infl.empty:
         all_vals.extend(plot_infl["PCE_YoY"].dropna().tolist())
     if show_unemployment and not plot_unrate.empty:
@@ -675,7 +632,7 @@ def build_figure(
         ("em_sov_hard", show_em_sov_hard, "EM SOV HARD BOND YIELD"),
         ("em_sov_local", show_em_sov_local, "EM SOV LOCAL BOND YIELD"),
         ("money_market", show_money_market, "MONEY MARKET BOND YIELD"),
-        ("tips_10y", show_tips_10y, "TIPS 10Y BOND YIELD"),
+        ("tips_10y", show_tips_10y, "AGENCY (NON-MBS) BOND YIELD"),
     ]:
         col = CREDIT_YIELD_COLS[key]
         if enabled and not plot_bond_yields.empty and col in plot_bond_yields.columns:
@@ -800,33 +757,6 @@ def build_figure(
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
-    if not plot_bond_yields.empty and not plot_ust.empty and baseline_col in plot_ust.columns:
-        cs_traces = [
-            ("us_ig_corp", show_cs_us_ig_corp, f"IG CORP BOND - {baseline_tenor} SPREAD"),
-            ("aaa_corp", show_cs_aaa_corp, f"AAA CORP BOND - {baseline_tenor} SPREAD"),
-            ("us_hy_corp", show_cs_us_hy_corp, f"HY CORP BOND - {baseline_tenor} SPREAD"),
-            ("ig_muni", show_cs_ig_muni, f"IG MUNI BOND - {baseline_tenor} SPREAD"),
-            ("hy_muni", show_cs_hy_muni, f"HY MUNI BOND - {baseline_tenor} SPREAD"),
-            ("aaa_clo", show_cs_aaa_clo, f"AAA CLO BOND - {baseline_tenor} SPREAD"),
-            ("senior_loans", show_cs_senior_loans, f"SENIOR LOANS BOND - {baseline_tenor} SPREAD"),
-            ("agency_mbs", show_cs_agency_mbs, f"AGENCY MBS BOND - {baseline_tenor} SPREAD"),
-        ]
-        base = plot_ust[["DATE", baseline_col]]
-        for key, enabled, label in cs_traces:
-            col = CREDIT_YIELD_COLS[key]
-            if not enabled or col not in plot_bond_yields.columns:
-                continue
-            s_df = plot_bond_yields[["DATE", col]].merge(base, on="DATE", how="left")
-            spread = pd.to_numeric(s_df[col], errors="coerce") - pd.to_numeric(s_df[baseline_col], errors="coerce")
-            fig.add_trace(
-                go.Scatter(
-                    x=s_df["DATE"],
-                    y=spread,
-                    name=label,
-                    line={"color": CREDIT_SPREAD_BUTTON_COLORS[key], "width": 1.6, "dash": "dot"},
-                    hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
-                )
-            )
     if show_inflation and not plot_infl.empty:
         fig.add_trace(
             go.Scatter(
@@ -1811,14 +1741,6 @@ app.layout = html.Div(
         dcc.Store(id="show-em-sov-local-state", data=False),
         dcc.Store(id="show-money-market-state", data=False),
         dcc.Store(id="show-tips-10y-state", data=False),
-        dcc.Store(id="show-cs-us-ig-corp-state", data=False),
-        dcc.Store(id="show-cs-aaa-corp-state", data=False),
-        dcc.Store(id="show-cs-us-hy-corp-state", data=False),
-        dcc.Store(id="show-cs-ig-muni-state", data=False),
-        dcc.Store(id="show-cs-hy-muni-state", data=False),
-        dcc.Store(id="show-cs-aaa-clo-state", data=False),
-        dcc.Store(id="show-cs-senior-loans-state", data=False),
-        dcc.Store(id="show-cs-agency-mbs-state", data=False),
         dcc.Store(id="show-vol-vix-state", data=True),
         dcc.Store(id="show-vol-vxn-state", data=False),
         dcc.Store(id="show-vol-rvx-state", data=False),
@@ -2021,7 +1943,7 @@ app.layout = html.Div(
                                                 html.Button(two_line_button_label("IG CORP", "yield-us-ig-corp-current"), id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CORP", "yield-aaa-corp-current"), id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CLO", "yield-aaa-clo-current"), id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("TIPS 10Y", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("AGENCY (NON-MBS)", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AGENCY MBS", "yield-agency-mbs-current"), id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
@@ -2037,39 +1959,6 @@ app.layout = html.Div(
                                 ),
                             ],
                             className="below-chart-controls bond-controls-box",
-                        ),
-                        html.Div("", className="row-spacer"),
-                        html.Div(
-                            [
-                                html.Div(
-                                    [
-                                        html.Div(["Credit Spreads", html.Br(), "(vs Treasuries)"], className="row-tag credit-row-tag"),
-                                        dcc.Dropdown(
-                                            id="cs-baseline-tenor",
-                                            options=[{"label": m, "value": m} for m in CS_BASELINE_PRESETS],
-                                            value="10Y",
-                                            clearable=False,
-                                            searchable=False,
-                                            className="cs-baseline-dropdown",
-                                        ),
-                                        html.Div(
-                                            [
-                                                html.Button("IG CORP", id="cs-ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA CORP", id="cs-aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("HY CORP", id="cs-ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("IG MUNI", id="cs-ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("HY MUNI", id="cs-hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AAA CLO", id="cs-aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("SENIOR LOANS", id="cs-senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button("AGENCY MBS", id="cs-agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
-                                            ],
-                                            className="spread-grid",
-                                        ),
-                                    ],
-                                    className="spread-row",
-                                ),
-                            ],
-                            className="below-chart-controls credit-spreads-box",
                         ),
                         html.Div("", className="row-spacer"),
                         html.Div(
@@ -2521,7 +2410,19 @@ def update_yield_button_current_values(_refresh_token):
         col = CREDIT_YIELD_COLS[key]
         if col not in bond_df.columns:
             return None
-        s = pd.to_numeric(bond_df[col], errors="coerce").dropna()
+        date_col = "DATE" if "DATE" in bond_df.columns else ("date" if "date" in bond_df.columns else None)
+        if date_col is None:
+            return None
+        s_df = bond_df[[date_col, col]].copy()
+        s_df[date_col] = pd.to_datetime(s_df[date_col], errors="coerce")
+        s_df[col] = pd.to_numeric(s_df[col], errors="coerce")
+        s = (
+            s_df.dropna(subset=[date_col])
+            .set_index(date_col)[col]
+            .resample("W-FRI")
+            .last()
+            .dropna()
+        )
         if s.empty:
             return None
         return float(s.iloc[-1])
@@ -3165,214 +3066,6 @@ def toggle_tips_10y_button(_n_clicks: int, current_state: bool):
 
 
 @app.callback(
-    Output("show-cs-us-ig-corp-state", "data"),
-    Output("cs-ig-corp-spread-btn", "className"),
-    Output("cs-ig-corp-spread-btn", "style"),
-    Input("cs-ig-corp-spread-btn", "n_clicks"),
-    State("show-cs-us-ig-corp-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_us_ig_corp_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["us_ig_corp"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-aaa-corp-state", "data"),
-    Output("cs-aaa-corp-yield-btn", "className"),
-    Output("cs-aaa-corp-yield-btn", "style"),
-    Input("cs-aaa-corp-yield-btn", "n_clicks"),
-    State("show-cs-aaa-corp-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_aaa_corp_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["aaa_corp"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-us-hy-corp-state", "data"),
-    Output("cs-ig-muni-spread-btn", "className"),
-    Output("cs-ig-muni-spread-btn", "style"),
-    Input("cs-ig-muni-spread-btn", "n_clicks"),
-    State("show-cs-us-hy-corp-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_us_hy_corp_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["us_hy_corp"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-ig-muni-state", "data"),
-    Output("cs-ig-muni-yield-btn", "className"),
-    Output("cs-ig-muni-yield-btn", "style"),
-    Input("cs-ig-muni-yield-btn", "n_clicks"),
-    State("show-cs-ig-muni-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_ig_muni_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["ig_muni"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-hy-muni-state", "data"),
-    Output("cs-hy-muni-yield-btn", "className"),
-    Output("cs-hy-muni-yield-btn", "style"),
-    Input("cs-hy-muni-yield-btn", "n_clicks"),
-    State("show-cs-hy-muni-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_hy_muni_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["hy_muni"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-aaa-clo-state", "data"),
-    Output("cs-aaa-clo-yield-btn", "className"),
-    Output("cs-aaa-clo-yield-btn", "style"),
-    Input("cs-aaa-clo-yield-btn", "n_clicks"),
-    State("show-cs-aaa-clo-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_aaa_clo_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["aaa_clo"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-senior-loans-state", "data"),
-    Output("cs-senior-loans-yield-btn", "className"),
-    Output("cs-senior-loans-yield-btn", "style"),
-    Input("cs-senior-loans-yield-btn", "n_clicks"),
-    State("show-cs-senior-loans-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_senior_loans_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["senior_loans"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
-    Output("show-cs-agency-mbs-state", "data"),
-    Output("cs-agency-mbs-yield-btn", "className"),
-    Output("cs-agency-mbs-yield-btn", "style"),
-    Input("cs-agency-mbs-yield-btn", "n_clicks"),
-    State("show-cs-agency-mbs-state", "data"),
-    prevent_initial_call=True,
-)
-def toggle_cs_agency_mbs_button(_n_clicks: int, current_state: bool):
-    new_state = not bool(current_state)
-    cls = "maturity-btn maturity-btn-active" if new_state else "maturity-btn"
-    style = (
-        {
-            "background": "transparent",
-            "backgroundColor": "transparent",
-            "backgroundImage": "none",
-            "borderColor": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
-            "borderWidth": "2px",
-            "color": CREDIT_SPREAD_BUTTON_COLORS["agency_mbs"],
-        }
-        if new_state
-        else {}
-    )
-    return new_state, cls, style
-
-
-@app.callback(
     Output("show-vol-vix-state", "data"),
     Output("show-vol-vxn-state", "data"),
     Output("show-vol-rvx-state", "data"),
@@ -3573,14 +3266,6 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-em-sov-local-state", "data"),
     Input("show-money-market-state", "data"),
     Input("show-tips-10y-state", "data"),
-    Input("show-cs-us-ig-corp-state", "data"),
-    Input("show-cs-aaa-corp-state", "data"),
-    Input("show-cs-us-hy-corp-state", "data"),
-    Input("show-cs-ig-muni-state", "data"),
-    Input("show-cs-hy-muni-state", "data"),
-    Input("show-cs-aaa-clo-state", "data"),
-    Input("show-cs-senior-loans-state", "data"),
-    Input("show-cs-agency-mbs-state", "data"),
     Input("show-vol-vix-state", "data"),
     Input("show-vol-vxn-state", "data"),
     Input("show-vol-rvx-state", "data"),
@@ -3596,7 +3281,6 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-vol-cnn_fear_greed-state", "data"),
     Input("vol-band-select", "value"),
     Input("vol-median-select", "value"),
-    Input("cs-baseline-tenor", "value"),
     Input("show-fed-rate", "value"),
     Input("show-inflation", "value"),
     Input("show-unemployment", "value"),
@@ -3622,14 +3306,6 @@ def update_visuals(
     show_em_sov_local_state,
     show_money_market_state,
     show_tips_10y_state,
-    show_cs_us_ig_corp_state,
-    show_cs_aaa_corp_state,
-    show_cs_us_hy_corp_state,
-    show_cs_ig_muni_state,
-    show_cs_hy_muni_state,
-    show_cs_aaa_clo_state,
-    show_cs_senior_loans_state,
-    show_cs_agency_mbs_state,
     show_vol_vix_state,
     show_vol_vxn_state,
     show_vol_rvx_state,
@@ -3645,7 +3321,6 @@ def update_visuals(
     show_vol_cnn_fear_greed_state,
     vol_band_mode,
     vol_median_mode,
-    cs_baseline_tenor,
     show_fed_rate_val,
     show_inflation_val,
     show_unemployment_val,
@@ -3670,14 +3345,6 @@ def update_visuals(
     show_em_sov_local = bool(show_em_sov_local_state)
     show_money_market = bool(show_money_market_state)
     show_tips_10y = bool(show_tips_10y_state)
-    show_cs_us_ig_corp = bool(show_cs_us_ig_corp_state)
-    show_cs_aaa_corp = bool(show_cs_aaa_corp_state)
-    show_cs_us_hy_corp = bool(show_cs_us_hy_corp_state)
-    show_cs_ig_muni = bool(show_cs_ig_muni_state)
-    show_cs_hy_muni = bool(show_cs_hy_muni_state)
-    show_cs_aaa_clo = bool(show_cs_aaa_clo_state)
-    show_cs_senior_loans = bool(show_cs_senior_loans_state)
-    show_cs_agency_mbs = bool(show_cs_agency_mbs_state)
     show_vol_vix = bool(show_vol_vix_state)
     show_vol_vxn = bool(show_vol_vxn_state)
     show_vol_rvx = bool(show_vol_rvx_state)
@@ -3880,15 +3547,6 @@ def update_visuals(
         show_em_sov_local=show_em_sov_local,
         show_money_market=show_money_market,
         show_tips_10y=show_tips_10y,
-        show_cs_us_ig_corp=show_cs_us_ig_corp,
-        show_cs_aaa_corp=show_cs_aaa_corp,
-        show_cs_us_hy_corp=show_cs_us_hy_corp,
-        show_cs_ig_muni=show_cs_ig_muni,
-        show_cs_hy_muni=show_cs_hy_muni,
-        show_cs_aaa_clo=show_cs_aaa_clo,
-        show_cs_senior_loans=show_cs_senior_loans,
-        show_cs_agency_mbs=show_cs_agency_mbs,
-        cs_baseline_tenor=cs_baseline_tenor,
         show_fed_rate=show_fed_rate,
         show_inflation=show_inflation,
         show_unemployment=show_unemployment,
@@ -4001,7 +3659,7 @@ def update_visuals(
         ("em_sov_hard", show_em_sov_hard, "EM SOV HARD"),
         ("em_sov_local", show_em_sov_local, "EM SOV LOCAL"),
         ("money_market", show_money_market, "MONEY MARKET"),
-        ("tips_10y", show_tips_10y, "TIPS 10Y"),
+        ("tips_10y", show_tips_10y, "AGENCY (NON-MBS)"),
     ]
     if not bond_yields_df.empty:
         for key, enabled, label in bond_flags:
@@ -4011,34 +3669,6 @@ def update_visuals(
             s_df = filter_by_date(bond_yields_df[["DATE", col]], start_date, end_date)
             s = pd.Series(pd.to_numeric(s_df[col], errors="coerce").values, index=s_df["DATE"], name=label)
             export_series.append((label, s))
-
-    baseline_tenor = cs_baseline_tenor if cs_baseline_tenor in SERIES else "10Y"
-    baseline_col = SERIES[baseline_tenor]
-    cs_flags = [
-        ("us_ig_corp", show_cs_us_ig_corp, "IG CORP"),
-        ("aaa_corp", show_cs_aaa_corp, "AAA CORP"),
-        ("us_hy_corp", show_cs_us_hy_corp, "HY CORP"),
-        ("ig_muni", show_cs_ig_muni, "IG MUNI"),
-        ("hy_muni", show_cs_hy_muni, "HY MUNI"),
-        ("aaa_clo", show_cs_aaa_clo, "AAA_CLO"),
-        ("senior_loans", show_cs_senior_loans, "SENIOR LOANS"),
-        ("agency_mbs", show_cs_agency_mbs, "AGENCY MBS"),
-    ]
-    if (
-        not bond_yields_df.empty
-        and baseline_col in ust_df.columns
-    ):
-        base_df = filter_by_date(ust_df[["DATE", baseline_col]], start_date, end_date).sort_values("DATE")
-        for key, enabled, label in cs_flags:
-            col = CREDIT_YIELD_COLS[key]
-            if not enabled or col not in bond_yields_df.columns:
-                continue
-            y_df = filter_by_date(bond_yields_df[["DATE", col]], start_date, end_date).sort_values("DATE")
-            if y_df.empty or base_df.empty:
-                continue
-            merged = pd.merge_asof(y_df, base_df, on="DATE", direction="backward")
-            spread_vals = pd.to_numeric(merged[col], errors="coerce") - pd.to_numeric(merged[baseline_col], errors="coerce")
-            export_series.append((f"{label}-{baseline_tenor}", pd.Series(spread_vals.values, index=merged["DATE"])))
 
     if show_fed_rate and not fed_df.empty and "FED_RATE" in fed_df.columns:
         s_df = filter_by_date(fed_df[["DATE", "FED_RATE"]], start_date, end_date)

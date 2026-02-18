@@ -1,0 +1,1 @@
+export FRED_API_KEY='69da3d502e36febadb1d149b360b8464'

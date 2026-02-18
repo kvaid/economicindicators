@@ -4,91 +4,49 @@ Download bond yield data from FRED and ETF sector proxies into one weekly CSV.
 from __future__ import annotations
 
 from datetime import datetime
-import os
 from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
-from fredapi import Fred
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent / "data"
 OUTPUT_FILE = DATA_DIR / "bondyields.csv"
 ERROR_FILE = DATA_DIR / "bond_download_errors.csv"
 
-START_DATE_FRED = "2000-01-01"
 START_DATE_ETF = "2005-01-01"
-WEEKLY_RULE = "W-FRI"
-ETF_YIELD_WINDOW_WEEKS = 52  # Set to 8 for a shorter rolling window.
+DAILY_RULE = "D"
+ETF_YIELD_WINDOW_DAYS = 30
+ETF_YIELD_SMOOTH_DAYS = 5
 
-def get_fred_api_key() -> str:
-    key = os.environ.get("FRED_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("Missing FRED_API_KEY environment variable.")
-    return key
-
-FRED_SERIES: dict[str, str] = {
-    "ice_bofa_us_corporate_effective_yield": "BAMLC0A0CMEY",
-    "ice_bofa_us_high_yield_effective_yield": "BAMLH0A0HYM2EY",
-    "ice_bofa_aaa_us_corporate_effective_yield": "BAMLC0A1CAAAEY",
-    "ice_bofa_b_us_corporate_effective_yield": "BAMLC0A4CBBBEY",
+ETF_SERIES: dict[str, dict[str, str]] = {
+    "US_IG_CORP_PROXY": {"ticker": "LQD", "out_col": "IG_CORP:LQD"},
+    "AAA_CORP_PROXY": {"ticker": "QLTA", "out_col": "AAA_CORP:QLTA"},
+    "US_HY_CORP_PROXY": {"ticker": "HYG", "out_col": "HY_CORP:HYG"},
+    "AAA_CLO": {"ticker": "JAAA", "out_col": "AAA_CLO:JAAA"},
+    "SENIOR_LOANS": {"ticker": "BKLN", "out_col": "SENIOR_LOANS:BKLN"},
+    "AGENCY_MBS": {"ticker": "MBB", "out_col": "AGENCY_MBS:MBB"},
+    "EM_SOV_HARD": {"ticker": "EMB", "out_col": "EM_SOV_HARD:EMB"},
+    "EM_SOV_LOCAL": {"ticker": "ELD", "out_col": "EM_SOV_LOCAL:ELD"},
+    "MONEY_MARKET": {"ticker": "SGOV", "out_col": "MONEY_MARKET:SGOV"},
+    "US_AGENCY": {"ticker": "AGZ", "out_col": "US_AGENCY:AGZ"},
+    "IG_MUNIS": {"ticker": "MUB", "out_col": "IG_MUNIS:MUB"},
+    "HY_MUNIS": {"ticker": "HYD", "out_col": "HY_MUNIS:HYD"},
 }
 
-SECTOR_ETFS: dict[str, str] = {
-    "AAA_CLO": "JAAA",
-    "SENIOR_LOANS": "BKLN",
-    "AGENCY_MBS": "MBB",
-    "EM_SOV_HARD": "EMB",
-    "EM_SOV_LOCAL": "ELD",
-    "MONEY_MARKET": "SGOV",
-    "TIPS_10Y": "TIP",
-    "CMBS": "CMBS",
-    "IG_MUNIS": "MUB",
-    "HY_MUNIS": "HYD",
-}
-
-
-def round_etf_proxy_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
+def round_all_yield_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
     if df.empty:
         return df
     out = df.copy()
-    etf_cols = [f"{sector}:{ticker}" for sector, ticker in SECTOR_ETFS.items()]
-    existing_cols = [col for col in etf_cols if col in out.columns]
-    if existing_cols:
-        out[existing_cols] = out[existing_cols].round(digits)
-    return out
-
-
-def download_fred_weekly(start_date: str, end_date: str) -> pd.DataFrame:
-    fred_client = Fred(api_key=get_fred_api_key())
-    frames: list[pd.DataFrame] = []
-    for out_col, series_id in FRED_SERIES.items():
-        series = fred_client.get_series(
-            series_id,
-            observation_start=start_date,
-            observation_end=end_date,
-        )
-        if series is None or series.empty:
+    candidate_cols = [c for c in out.columns if c != "date"]
+    for col in candidate_cols:
+        try:
+            coerced = pd.to_numeric(out[col], errors="coerce")
+            if coerced.notna().any():
+                out[col] = coerced.round(digits)
+        except Exception:
             continue
-        df = series.rename(out_col).to_frame().reset_index()
-        df = df.rename(columns={"index": "date"})
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df[out_col] = pd.to_numeric(df[out_col], errors="coerce")
-        df = df.dropna(subset=["date"])
-        frames.append(df[["date", out_col]])
-
-    if not frames:
-        return pd.DataFrame()
-
-    merged = frames[0]
-    for df in frames[1:]:
-        merged = merged.merge(df, on="date", how="outer")
-
-    merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
-    merged = merged.set_index("date").resample(WEEKLY_RULE).last().ffill()
-    merged.index.name = "date"
-    merged = normalize_date_index(merged)
-    return merged
+    return out
 
 
 def download_etf_series(ticker: str, start_date: str) -> tuple[pd.Series, pd.Series]:
@@ -109,21 +67,24 @@ def download_etf_series(ticker: str, start_date: str) -> tuple[pd.Series, pd.Ser
 
 
 def compute_weekly_ttm_yield(adj_close: pd.Series, dividends: pd.Series) -> pd.Series:
-    px_w = adj_close.resample(WEEKLY_RULE).last().dropna()
-    div_w = dividends.resample(WEEKLY_RULE).sum().reindex(px_w.index, fill_value=0.0)
-    rolling_div = div_w.rolling(ETF_YIELD_WINDOW_WEEKS, min_periods=1).sum()
-    return (rolling_div / px_w) * 100.0
+    px_d = adj_close.resample(DAILY_RULE).last().ffill().dropna()
+    div_d = dividends.resample(DAILY_RULE).sum().reindex(px_d.index, fill_value=0.0)
+    rolling_div = div_d.rolling(ETF_YIELD_WINDOW_DAYS, min_periods=1).sum()
+    annualized_yield = (rolling_div / px_d) * (365.0 / ETF_YIELD_WINDOW_DAYS) * 100.0
+    return annualized_yield.rolling(ETF_YIELD_SMOOTH_DAYS, min_periods=1).mean()
 
 
 def download_sector_weekly(start_date: str) -> tuple[pd.DataFrame, list[dict[str, str]]]:
     series_list: list[pd.Series] = []
     errors: list[dict[str, str]] = []
 
-    for sector, ticker in SECTOR_ETFS.items():
+    for sector, spec in ETF_SERIES.items():
+        ticker = spec["ticker"]
+        out_col = spec["out_col"]
         try:
             adj, div = download_etf_series(ticker, start_date=start_date)
             yld = compute_weekly_ttm_yield(adj, div)
-            yld.name = f"{sector}:{ticker}"
+            yld.name = out_col
             series_list.append(yld)
         except Exception as exc:
             errors.append({"sector": sector, "ticker": ticker, "error": str(exc)})
@@ -151,21 +112,17 @@ def normalize_date_index(df: pd.DataFrame) -> pd.DataFrame:
 def download_all_bond_data() -> tuple[pd.DataFrame, list[dict[str, str]]]:
     end_date = datetime.now().strftime("%Y-%m-%d")
 
-    print(f"Downloading FRED weekly series ({START_DATE_FRED} to {end_date})...")
-    fred_weekly = download_fred_weekly(start_date=START_DATE_FRED, end_date=end_date)
-
-    print(f"Downloading ETF sector weekly series ({START_DATE_ETF} to {end_date})...")
+    print(f"Downloading ETF sector daily series ({START_DATE_ETF} to {end_date})...")
     etf_weekly, errors = download_sector_weekly(start_date=START_DATE_ETF)
 
-    combined = fred_weekly.join(etf_weekly, how="outer").sort_index()
-    return combined, errors
+    return etf_weekly.sort_index(), errors
 
 
 if __name__ == "__main__":
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         combined_df, download_errors = download_all_bond_data()
-        combined_df = round_etf_proxy_columns(combined_df, digits=2)
+        combined_df = round_all_yield_columns(combined_df, digits=2)
         combined_df.reset_index().to_csv(
             OUTPUT_FILE,
             index=False,
