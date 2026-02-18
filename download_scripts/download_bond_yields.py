@@ -16,7 +16,7 @@ ERROR_FILE = DATA_DIR / "bond_download_errors.csv"
 
 START_DATE_ETF = "2005-01-01"
 DAILY_RULE = "D"
-ETF_YIELD_WINDOW_DAYS = 30
+ETF_YIELD_WINDOW_DAYS = 91
 ETF_YIELD_SMOOTH_DAYS = 5
 
 ETF_SERIES: dict[str, dict[str, str]] = {
