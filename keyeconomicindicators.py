@@ -1435,7 +1435,7 @@ def build_figure(
             "linecolor": "rgba(15, 23, 42, 0.25)",
         },
         yaxis2={
-            "title": "%",
+            "title": "",
             "side": "right",
             "overlaying": "y",
             "showgrid": False,
