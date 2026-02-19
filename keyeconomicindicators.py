@@ -697,7 +697,7 @@ def build_figure(
             go.Scatter(
                 x=plot_fed["DATE"],
                 y=plot_fed[SOFR_COL],
-                name="SOFR 30D Avg",
+                name="SOFR Daily",
                 line={"color": "#1B8F3A", "width": 2},
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
@@ -1929,7 +1929,7 @@ app.layout = html.Div(
                                             [
                                                 dcc.Checklist(
                                                     id="show-sofr",
-                                                    options=[{"label": "SOFR 30D Avg", "value": "on"}],
+                                                    options=[{"label": "SOFR Daily", "value": "on"}],
                                                     value=[],
                                                     className="macro-checklist-inner",
                                                 ),
@@ -3510,8 +3510,12 @@ def update_visuals(
             fed_df[SOFR_COL] = pd.to_numeric(fed_df[SOFR_COL], errors="coerce")
             value_cols.append(SOFR_COL)
         if value_cols:
-            fed_monthly = align_to_month_end(fed_df[["DATE"] + value_cols])
-            fed_monthly = align_to_treasury_daily_calendar(fed_monthly, value_cols, treasury_dates)
+            fed_monthly = (
+                fed_df[["DATE"] + value_cols]
+                .sort_values("DATE")
+                .drop_duplicates(subset=["DATE"], keep="last")
+                .reset_index(drop=True)
+            )
         else:
             fed_monthly = pd.DataFrame()
     else:
@@ -3771,7 +3775,7 @@ def update_visuals(
     if show_sofr and SOFR_COL in fed_df.columns:
         s_df = filter_by_date(fed_df[["DATE", SOFR_COL]], start_date, end_date)
         sofr_vals = pd.to_numeric(s_df[SOFR_COL], errors="coerce")
-        export_series.append(("SOFR 30D Avg", pd.Series(sofr_vals.values, index=s_df["DATE"])))
+        export_series.append(("SOFR Daily", pd.Series(sofr_vals.values, index=s_df["DATE"])))
 
     bond_flags = [
         ("us_ig_corp", show_us_ig_corp, "IG CORP"),

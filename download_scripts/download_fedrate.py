@@ -1,6 +1,6 @@
 """
 Download Federal Reserve target rate data using fredapi and save to fedrate.csv.
-Builds a full authoritative monthly history each run for data integrity.
+Builds a full authoritative daily history each run for data integrity.
 """
 from datetime import datetime
 import os
@@ -64,17 +64,23 @@ def download_fed_rate_data() -> pd.DataFrame | None:
         if combined.empty:
             return None
 
-        sofr = fetch_fred_series(fred_client, "SOFR30DAYAVG", "SOFR", fetch_start, fetch_end).set_index("observation_date")
+        fed_daily = combined.resample("D").ffill()
+        sofr = fetch_fred_series(fred_client, "SOFR", "SOFR", fetch_start, fetch_end).set_index("observation_date")
         if not sofr.empty:
-            combined = combined.join(sofr[["SOFR"]], how="outer")
+            daily = fed_daily.join(sofr[["SOFR"]], how="left")
+            daily["SOFR"] = pd.to_numeric(daily["SOFR"], errors="coerce").ffill()
+            daily = daily.reset_index()
+        else:
+            daily = fed_daily.reset_index()
+        daily = daily.rename(columns={"observation_date": "date"})
+        daily = daily[daily["date"] >= "1990-01-01"]
 
-        combined = combined.resample("D").ffill()
-        monthly = combined.resample("ME").last().reset_index()
-        monthly = monthly.rename(columns={"observation_date": "date"})
-        monthly = monthly[monthly["date"] >= "1990-01-01"]
+        numeric_cols = daily.select_dtypes(include=["number"]).columns
+        if len(numeric_cols) > 0:
+            daily.loc[:, numeric_cols] = daily.loc[:, numeric_cols].round(2)
 
-        print(f"OK Built {len(monthly)} monthly records")
-        return monthly.reset_index(drop=True)
+        print(f"OK Built {len(daily)} daily records")
+        return daily.reset_index(drop=True)
     except Exception as exc:
         print(f"ERROR downloading data: {exc}")
         return None
@@ -87,7 +93,7 @@ if __name__ == "__main__":
     df = download_fed_rate_data()
 
     if df is not None:
-        df.to_csv(OUTPUT_FILE, index=False)
+        df.to_csv(OUTPUT_FILE, index=False, float_format="%.2f")
         print(f"\nOK Data saved to {OUTPUT_FILE}")
         print(f"Rows added/updated: {len(df) - before_rows}")
     else:
