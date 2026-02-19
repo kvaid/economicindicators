@@ -29,7 +29,7 @@ ETF_SERIES: dict[str, dict[str, str]] = {
     "EM_SOV_HARD": {"ticker": "EMB", "out_col": "EM_SOV_HARD:EMB"},
     "EM_SOV_LOCAL": {"ticker": "ELD", "out_col": "EM_SOV_LOCAL:ELD"},
     "MONEY_MARKET": {"ticker": "SGOV", "out_col": "MONEY_MARKET:SGOV"},
-    "US_AGENCY": {"ticker": "AGZ", "out_col": "US_AGENCY:AGZ"},
+    "CMBS": {"ticker": "CMBS", "out_col": "CMBS:CMBS"},
     "IG_MUNIS": {"ticker": "MUB", "out_col": "IG_MUNIS:MUB"},
     "HY_MUNIS": {"ticker": "HYD", "out_col": "HY_MUNIS:HYD"},
 }

@@ -45,7 +45,7 @@ CREDIT_YIELD_COLS = {
     "em_sov_hard": "EM_SOV_HARD:EMB",
     "em_sov_local": "EM_SOV_LOCAL:ELD",
     "money_market": "MONEY_MARKET:SGOV",
-    "tips_10y": "US_AGENCY:AGZ",
+    "tips_10y": "CMBS:CMBS",
 }
 BOND_LINE_COLORS = {
     "us_ig_corp": "#A1D99B",
@@ -640,7 +640,7 @@ def build_figure(
         ("em_sov_hard", show_em_sov_hard, "EM SOV HARD BOND YIELD"),
         ("em_sov_local", show_em_sov_local, "EM SOV LOCAL BOND YIELD"),
         ("money_market", show_money_market, "MONEY MARKET BOND YIELD"),
-        ("tips_10y", show_tips_10y, "AGENCY (NON-MBS) BOND YIELD"),
+        ("tips_10y", show_tips_10y, "CMBS BOND YIELD"),
     ]:
         col = CREDIT_YIELD_COLS[key]
         if enabled and not plot_bond_yields.empty and col in plot_bond_yields.columns:
@@ -1951,7 +1951,7 @@ app.layout = html.Div(
                                                 html.Button(two_line_button_label("IG CORP", "yield-us-ig-corp-current"), id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CORP", "yield-aaa-corp-current"), id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AAA CLO", "yield-aaa-clo-current"), id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("AGENCY (NON-MBS)", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Button(two_line_button_label("CMBS", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("AGENCY MBS", "yield-agency-mbs-current"), id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
                                                 html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
@@ -3667,7 +3667,7 @@ def update_visuals(
         ("em_sov_hard", show_em_sov_hard, "EM SOV HARD"),
         ("em_sov_local", show_em_sov_local, "EM SOV LOCAL"),
         ("money_market", show_money_market, "MONEY MARKET"),
-        ("tips_10y", show_tips_10y, "AGENCY (NON-MBS)"),
+        ("tips_10y", show_tips_10y, "CMBS"),
     ]
     if not bond_yields_df.empty:
         for key, enabled, label in bond_flags:
