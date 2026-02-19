@@ -125,6 +125,40 @@ VOLATILITY_BUTTON_LABELS = {
     "dxy": "DXY (US DOLLAR)",
     "cnn_fear_greed": "CNN FEAR AND GREED",
 }
+VOLATILITY_BUTTON_ORDER = [
+    "vix",
+    "vxn",
+    "rvx",
+    "vxeem",
+    "skew",
+    "move",
+    "hy_oas",
+    "dxy",
+    "cnn_fear_greed",
+    "stlfsi",
+    "gvz",
+    "ovx",
+]
+VOLATILITY_BUTTON_IDS = [f"vol-{k}-btn" for k in VOLATILITY_BUTTON_ORDER]
+VOLATILITY_BUTTON_STATE_IDS = [f"show-vol-{k}-state" for k in VOLATILITY_BUTTON_ORDER]
+_VOLATILITY_KEY_INDEX = {btn_id: key for btn_id, key in zip(VOLATILITY_BUTTON_IDS, VOLATILITY_BUTTON_ORDER)}
+
+BOND_YIELD_BUTTONS = [
+    ("money-market-yield-btn", "yield-money-market-current", "money_market", "MONEY MARKET"),
+    ("ig-corp-spread-btn", "yield-us-ig-corp-current", "us_ig_corp", "IG CORP"),
+    ("aaa-corp-yield-btn", "yield-aaa-corp-current", "aaa_corp", "AAA CORP"),
+    ("aaa-clo-yield-btn", "yield-aaa-clo-current", "aaa_clo", "AAA CLO"),
+    ("tips-10y-yield-btn", "yield-tips-10y-current", "tips_10y", "CMBS"),
+    ("agency-mbs-yield-btn", "yield-agency-mbs-current", "agency_mbs", "AGENCY MBS"),
+    ("ig-muni-yield-btn", "yield-ig-muni-current", "ig_muni", "IG MUNI"),
+    ("senior-loans-yield-btn", "yield-senior-loans-current", "senior_loans", "SENIOR LOANS"),
+    ("ig-muni-spread-btn", "yield-us-hy-corp-current", "us_hy_corp", "HY CORP"),
+    ("hy-muni-yield-btn", "yield-hy-muni-current", "hy_muni", "HY MUNI"),
+    ("em-sov-hard-yield-btn", "yield-em-sov-hard-current", "em_sov_hard", "EM SOV HARD"),
+    ("em-sov-local-yield-btn", "yield-em-sov-local-current", "em_sov_local", "EM SOV LOCAL"),
+]
+TEY_BOND_KEYS = {"ig_muni", "hy_muni"}
+VOLATILITY_BUTTON_WITH_CURRENT_VALUES = set(VOLATILITY_BUTTON_ORDER)
 REFRESH_SCRIPTS = [
     "download_scripts/download_fedrate.py",
     "download_scripts/download_inflation.py",
@@ -1542,6 +1576,113 @@ def _vix_dot_style(color: str) -> dict:
     }
 
 
+def _format_last_value(series: pd.Series, suffix: str = "") -> str:
+    s = pd.to_numeric(series, errors="coerce").dropna()
+    if s.empty:
+        return "--"
+    return f"{float(s.iloc[-1]):.2f}{suffix}"
+
+
+def _format_bond_display_value(value: float | None, include_tey: bool = False) -> str:
+    if value is None:
+        return "--"
+    base = f"{float(value):.2f}%"
+    if include_tey:
+        tey = float(value) / 0.6
+        return f"{base} (TEY: {tey:.2f}%)"
+    return base
+
+
+def _build_button_style(is_active: bool, color: str) -> dict:
+    if not is_active:
+        return {}
+    return {
+        "background": "#fff",
+        "backgroundColor": "#fff",
+        "backgroundImage": "none",
+        "borderColor": color,
+        "borderWidth": "2px",
+        "color": color,
+    }
+
+
+def _build_bond_button(button_id: str, value_output_id: str, label: str) -> html.Button:
+    return html.Button(
+        two_line_button_label(label, value_output_id),
+        id=button_id,
+        n_clicks=0,
+        className="maturity-btn",
+    )
+
+
+def _bond_latest_value(df: pd.DataFrame, key: str) -> float | None:
+    if df.empty:
+        return None
+    col = CREDIT_YIELD_COLS.get(key)
+    if col not in df.columns:
+        return None
+    date_col = "DATE" if "DATE" in df.columns else ("date" if "date" in df.columns else None)
+    if date_col is None:
+        return None
+
+    df2 = df[[date_col, col]].copy()
+    df2[date_col] = pd.to_datetime(df2[date_col], errors="coerce")
+    df2[col] = pd.to_numeric(df2[col], errors="coerce")
+    s = (
+        df2.dropna(subset=[date_col])
+        .set_index(date_col)[col]
+        .resample("W-FRI")
+        .last()
+        .dropna()
+    )
+    if s.empty:
+        return None
+    return float(s.iloc[-1])
+
+
+def _build_status_dots(col: str) -> html.Span:
+    return html.Span(
+        [
+            html.Span(id=f"{col}-status-dot-{i}", style=_vix_dot_style("#9CA3AF"))
+            for i in range(1, 6)
+        ],
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "gap": "4px",
+            "marginRight": "8px",
+        },
+    )
+
+
+def _build_volatility_button(col: str, active: bool = False) -> html.Button:
+    is_active = bool(active)
+    label = VOLATILITY_BUTTON_LABELS.get(col, col)
+    has_current_value = col in VOLATILITY_BUTTON_WITH_CURRENT_VALUES
+
+    button_children = []
+    if has_current_value:
+        button_children.append(_build_status_dots(col))
+        button_children.append(
+            html.Span(
+                [html.Span(label), html.Span(id=f"vol-{col}-current-value", className="vol-btn-subvalue")],
+                className="vol-btn-text-stack",
+            )
+        )
+    else:
+        button_children = html.Span(label)
+
+    color = VOLATILITY_BUTTON_COLORS.get(col, "#64748B")
+    return html.Button(
+        button_children,
+        id=f"vol-{col}-btn",
+        n_clicks=0,
+        className=("maturity-btn maturity-btn-active" if is_active else "maturity-btn"),
+        style=_build_button_style(is_active, color),
+        title=VOLATILITY_HOVER_LABELS.get(col, col),
+    )
+
+
 def _vix_color_from_value(v: float | None) -> str:
     if v is None or pd.isna(v):
         return "#D1D5DB"
@@ -2029,28 +2170,20 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Div("", className="control-label"),
-                                html.Div(
-                                    [
-                                        html.Div("Bond Yields", className="row-tag"),
                                         html.Div(
                                             [
-                                                html.Button(two_line_button_label("MONEY MARKET", "yield-money-market-current"), id="money-market-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("IG CORP", "yield-us-ig-corp-current"), id="ig-corp-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("AAA CORP", "yield-aaa-corp-current"), id="aaa-corp-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("AAA CLO", "yield-aaa-clo-current"), id="aaa-clo-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("CMBS", "yield-tips-10y-current"), id="tips-10y-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("AGENCY MBS", "yield-agency-mbs-current"), id="agency-mbs-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("IG MUNI", "yield-ig-muni-current"), id="ig-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("SENIOR LOANS", "yield-senior-loans-current"), id="senior-loans-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("HY CORP", "yield-us-hy-corp-current"), id="ig-muni-spread-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("HY MUNI", "yield-hy-muni-current"), id="hy-muni-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("EM SOV HARD", "yield-em-sov-hard-current"), id="em-sov-hard-yield-btn", n_clicks=0, className="maturity-btn"),
-                                                html.Button(two_line_button_label("EM SOV LOCAL", "yield-em-sov-local-current"), id="em-sov-local-yield-btn", n_clicks=0, className="maturity-btn"),
+                                                html.Div("Bond Yields", className="row-tag"),
+                                                html.Div(
+                                                    [
+                                                        *[
+                                                            _build_bond_button(btn_id, value_id, label)
+                                                            for btn_id, value_id, _k, label in BOND_YIELD_BUTTONS
+                                                        ],
+                                                    ],
+                                                    className="spread-grid",
+                                                ),
                                             ],
-                                            className="spread-grid",
-                                        ),
-                                    ],
-                                    className="spread-row",
+                                            className="spread-row",
                                 ),
                             ],
                             className="below-chart-controls bond-controls-box",
@@ -2101,266 +2234,11 @@ app.layout = html.Div(
                                         html.Div(
                                             [
                                                 *[
-                                                    html.Button(
-                                                        (
-                                                            [
-                                                                html.Span(
-                                                                    [
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-1",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-2",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-3",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-4",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-5",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                    ],
-                                                                    style={
-                                                                        "display": "inline-flex",
-                                                                        "alignItems": "center",
-                                                                        "gap": "4px",
-                                                                        "marginRight": "8px",
-                                                                    },
-                                                                ),
-                                                                html.Span(
-                                                                    [
-                                                                        html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
-                                                                        html.Span(id=f"vol-{col}-current-value", className="vol-btn-subvalue"),
-                                                                    ],
-                                                                    className="vol-btn-text-stack",
-                                                                ),
-                                                            ]
-                                                            if col in {"vix", "vxn", "rvx", "vxeem"}
-                                                            else VOLATILITY_BUTTON_LABELS.get(col, col)
-                                                        ),
-                                                        id=f"vol-{col}-btn",
-                                                        n_clicks=0,
-                                                        className=("maturity-btn maturity-btn-active" if col == "vix" else "maturity-btn"),
-                                                        style=(
-                                                            {
-                                                                "background": "#fff",
-                                                                "backgroundColor": "#fff",
-                                                                "backgroundImage": "none",
-                                                                "borderColor": VOLATILITY_BUTTON_COLORS["vix"],
-                                                                "borderWidth": "2px",
-                                                                "color": VOLATILITY_BUTTON_COLORS["vix"],
-                                                            }
-                                                            if col == "vix"
-                                                            else {}
-                                                        ),
-                                                        title=VOLATILITY_HOVER_LABELS.get(col, col),
+                                                    _build_volatility_button(
+                                                        col, active=(col == "vix")
                                                     )
-                                                    for col in ["vix", "vxn", "rvx", "vxeem"]
+                                                    for col in VOLATILITY_BUTTON_ORDER
                                                 ],
-                                                *[
-                                                    html.Button(
-                                                        (
-                                                            [
-                                                                html.Span(
-                                                                    [
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-1",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-2",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-3",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-4",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                        html.Span(
-                                                                            id=f"{col}-status-dot-5",
-                                                                            style={
-                                                                                "display": "inline-block",
-                                                                                "width": "12px",
-                                                                                "height": "12px",
-                                                                                "borderRadius": "50%",
-                                                                                "backgroundColor": "#9CA3AF",
-                                                                                "border": "1px solid rgba(15, 23, 42, 0.35)",
-                                                                            },
-                                                                        ),
-                                                                    ],
-                                                                    style={
-                                                                        "display": "inline-flex",
-                                                                        "alignItems": "center",
-                                                                        "gap": "4px",
-                                                                        "marginRight": "8px",
-                                                                    },
-                                                                ),
-                                                                html.Span(
-                                                                    [
-                                                                        html.Span(VOLATILITY_BUTTON_LABELS.get(col, col)),
-                                                                        html.Span(id=f"vol-{col}-current-value", className="vol-btn-subvalue"),
-                                                                    ],
-                                                                    className="vol-btn-text-stack",
-                                                                ),
-                                                            ]
-                                                            if col in {"skew", "move", "hy_oas", "dxy", "cnn_fear_greed"}
-                                                            else VOLATILITY_BUTTON_LABELS.get(col, col)
-                                                        ),
-                                                        id=f"vol-{col}-btn",
-                                                        n_clicks=0,
-                                                        className="maturity-btn",
-                                                        title=VOLATILITY_HOVER_LABELS.get(col, col),
-                                                    )
-                                                    for col in ["skew", "move", "hy_oas", "dxy", "cnn_fear_greed"]
-                                                ],
-                                                html.Button(
-                                                    [
-                                                        html.Span(
-                                                            [
-                                                                html.Span(id="stlfsi-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="stlfsi-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="stlfsi-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="stlfsi-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="stlfsi-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                            ],
-                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
-                                                        ),
-                                                        html.Span(
-                                                            [
-                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("stlfsi", "stlfsi")),
-                                                                html.Span(id="vol-stlfsi-current-value", className="vol-btn-subvalue"),
-                                                            ],
-                                                            className="vol-btn-text-stack",
-                                                        ),
-                                                    ],
-                                                    id="vol-stlfsi-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title=VOLATILITY_HOVER_LABELS.get("stlfsi", "stlfsi"),
-                                                ),
-                                                html.Button(
-                                                    [
-                                                        html.Span(
-                                                            [
-                                                                html.Span(id="gvz-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="gvz-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="gvz-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="gvz-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="gvz-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                            ],
-                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
-                                                        ),
-                                                        html.Span(
-                                                            [
-                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("gvz", "gvz")),
-                                                                html.Span(id="vol-gvz-current-value", className="vol-btn-subvalue"),
-                                                            ],
-                                                            className="vol-btn-text-stack",
-                                                        ),
-                                                    ],
-                                                    id="vol-gvz-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title=VOLATILITY_HOVER_LABELS.get("gvz", "gvz"),
-                                                ),
-                                                html.Button(
-                                                    [
-                                                        html.Span(
-                                                            [
-                                                                html.Span(id="ovx-status-dot-1", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="ovx-status-dot-2", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="ovx-status-dot-3", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="ovx-status-dot-4", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                                html.Span(id="ovx-status-dot-5", style={"display": "inline-block", "width": "12px", "height": "12px", "borderRadius": "50%", "backgroundColor": "#9CA3AF", "border": "1px solid rgba(15, 23, 42, 0.35)"}),
-                                                            ],
-                                                            style={"display": "inline-flex", "alignItems": "center", "gap": "4px", "marginRight": "8px"},
-                                                        ),
-                                                        html.Span(
-                                                            [
-                                                                html.Span(VOLATILITY_BUTTON_LABELS.get("ovx", "ovx")),
-                                                                html.Span(id="vol-ovx-current-value", className="vol-btn-subvalue"),
-                                                            ],
-                                                            className="vol-btn-text-stack",
-                                                        ),
-                                                    ],
-                                                    id="vol-ovx-btn",
-                                                    n_clicks=0,
-                                                    className="maturity-btn",
-                                                    title=VOLATILITY_HOVER_LABELS.get("ovx", "ovx"),
-                                                ),
                                             ],
                                             className="spread-grid",
                                         ),
@@ -2422,36 +2300,30 @@ STATUS_DOT_COLOR_FNS = {
     Input("refresh-token", "data"),
 )
 def update_macro_current_values(_refresh_token):
-    def _format(series: pd.Series, suffix: str = "%") -> str:
-        s = pd.to_numeric(series, errors="coerce").dropna()
-        if s.empty:
-            return "--"
-        return f"{float(s.iloc[-1]):.2f}{suffix}"
-
     fed_df = load_and_process_csv("data/fedrate.csv")
-    fed_value = _format(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "--"
+    fed_value = _format_last_value(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "--"
 
     infl_df = load_and_process_csv("data/inflation.csv")
-    infl_value = _format(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "--"
+    infl_value = _format_last_value(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "--"
 
     unrate_df = load_and_process_csv("data/unemployment.csv")
     if not unrate_df.empty and "UNRATE" in unrate_df.columns:
-        unrate_value = _format(unrate_df["UNRATE"])
+        unrate_value = _format_last_value(unrate_df["UNRATE"])
     else:
         unrate_value = "--"
 
     if not unrate_df.empty and "U6RATE" in unrate_df.columns:
-        u6_value = _format(unrate_df["U6RATE"])
+        u6_value = _format_last_value(unrate_df["U6RATE"])
     else:
         u6_value = "--"
 
     if not unrate_df.empty and {"UNRATE", "NROU"}.issubset(unrate_df.columns):
         unemp_indicator = pd.to_numeric(unrate_df["UNRATE"], errors="coerce") - pd.to_numeric(unrate_df["NROU"], errors="coerce")
-        unemp_ind_value = _format(unemp_indicator, suffix="")
+        unemp_ind_value = _format_last_value(unemp_indicator, suffix="")
     else:
         unemp_ind_value = "--"
 
-    sofr_value = _format(fed_df[SOFR_COL]) if (not fed_df.empty and SOFR_COL in fed_df.columns) else "--"
+    sofr_value = _format_last_value(fed_df[SOFR_COL]) if (not fed_df.empty and SOFR_COL in fed_df.columns) else "--"
 
     return fed_value, infl_value, unrate_value, u6_value, unemp_ind_value, sofr_value
 
@@ -2459,26 +2331,10 @@ def update_macro_current_values(_refresh_token):
 @app.callback(
     Output("yield-spread-current", "children"),
     *[Output(f"yield-maturity-{m}-current", "children") for m in MATURITY_PRESETS],
-    Output("yield-us-ig-corp-current", "children"),
-    Output("yield-aaa-corp-current", "children"),
-    Output("yield-us-hy-corp-current", "children"),
-    Output("yield-ig-muni-current", "children"),
-    Output("yield-hy-muni-current", "children"),
-    Output("yield-aaa-clo-current", "children"),
-    Output("yield-senior-loans-current", "children"),
-    Output("yield-agency-mbs-current", "children"),
-    Output("yield-em-sov-hard-current", "children"),
-    Output("yield-em-sov-local-current", "children"),
-    Output("yield-money-market-current", "children"),
-    Output("yield-tips-10y-current", "children"),
+    *[Output(value_id, "children") for _, value_id, _, _ in BOND_YIELD_BUTTONS],
     Input("refresh-token", "data"),
 )
 def update_yield_button_current_values(_refresh_token):
-    def _fmt_value(v: float | None) -> str:
-        if v is None or pd.isna(v):
-            return "--"
-        return f"{float(v):.2f}%"
-
     ust_df = load_and_process_csv("data/ust.csv")
     bond_df = load_and_process_csv("data/bondyields.csv")
 
@@ -2502,44 +2358,15 @@ def update_yield_button_current_values(_refresh_token):
     else:
         maturity_values = [None for _ in MATURITY_PRESETS]
 
-    def _bond_latest(key: str) -> float | None:
-        if bond_df.empty:
-            return None
-        col = CREDIT_YIELD_COLS[key]
-        if col not in bond_df.columns:
-            return None
-        date_col = "DATE" if "DATE" in bond_df.columns else ("date" if "date" in bond_df.columns else None)
-        if date_col is None:
-            return None
-        s_df = bond_df[[date_col, col]].copy()
-        s_df[date_col] = pd.to_datetime(s_df[date_col], errors="coerce")
-        s_df[col] = pd.to_numeric(s_df[col], errors="coerce")
-        s = (
-            s_df.dropna(subset=[date_col])
-            .set_index(date_col)[col]
-            .resample("W-FRI")
-            .last()
-            .dropna()
-        )
-        if s.empty:
-            return None
-        return float(s.iloc[-1])
+    bond_values = []
+    for _, _, key, _ in BOND_YIELD_BUTTONS:
+        current_val = _bond_latest_value(bond_df, key)
+        bond_values.append(_format_bond_display_value(current_val, include_tey=(key in TEY_BOND_KEYS)))
 
     return (
-        _fmt_value(spread_value),
-        *[_fmt_value(v) for v in maturity_values],
-        _fmt_value(_bond_latest("us_ig_corp")),
-        _fmt_value(_bond_latest("aaa_corp")),
-        _fmt_value(_bond_latest("us_hy_corp")),
-        _fmt_value(_bond_latest("ig_muni")),
-        _fmt_value(_bond_latest("hy_muni")),
-        _fmt_value(_bond_latest("aaa_clo")),
-        _fmt_value(_bond_latest("senior_loans")),
-        _fmt_value(_bond_latest("agency_mbs")),
-        _fmt_value(_bond_latest("em_sov_hard")),
-        _fmt_value(_bond_latest("em_sov_local")),
-        _fmt_value(_bond_latest("money_market")),
-        _fmt_value(_bond_latest("tips_10y")),
+        _format_last_value(pd.Series([spread_value]), "%") if spread_value is not None else "--",
+        *[_format_last_value(pd.Series([v]), "%") if v is not None else "--" for v in maturity_values],
+        *bond_values,
     )
 
 
@@ -2557,8 +2384,7 @@ def update_volatility_button_current_values(_refresh_token):
         if key not in vol_df.columns:
             out.append("--")
             continue
-        s = pd.to_numeric(vol_df[key], errors="coerce").dropna()
-        out.append(f"{float(s.iloc[-1]):.2f}" if not s.empty else "--")
+        out.append(_format_last_value(vol_df[key]))
     return tuple(out)
 
 
@@ -3172,113 +2998,23 @@ def toggle_tips_10y_button(_n_clicks: int, current_state: bool):
 
 
 @app.callback(
-    Output("show-vol-vix-state", "data"),
-    Output("show-vol-vxn-state", "data"),
-    Output("show-vol-rvx-state", "data"),
-    Output("show-vol-vxeem-state", "data"),
-    Output("show-vol-skew-state", "data"),
-    Output("show-vol-gvz-state", "data"),
-    Output("show-vol-ovx-state", "data"),
-    Output("show-vol-stlfsi-state", "data"),
-    Output("show-vol-hy_oas-state", "data"),
-    Output("show-vol-move-state", "data"),
-    Output("show-vol-dxy-state", "data"),
-    Output("show-vol-cnn_fear_greed-state", "data"),
-    Output("vol-vix-btn", "className"),
-    Output("vol-vxn-btn", "className"),
-    Output("vol-rvx-btn", "className"),
-    Output("vol-vxeem-btn", "className"),
-    Output("vol-skew-btn", "className"),
-    Output("vol-gvz-btn", "className"),
-    Output("vol-ovx-btn", "className"),
-    Output("vol-stlfsi-btn", "className"),
-    Output("vol-hy_oas-btn", "className"),
-    Output("vol-move-btn", "className"),
-    Output("vol-dxy-btn", "className"),
-    Output("vol-cnn_fear_greed-btn", "className"),
-    Output("vol-vix-btn", "style"),
-    Output("vol-vxn-btn", "style"),
-    Output("vol-rvx-btn", "style"),
-    Output("vol-vxeem-btn", "style"),
-    Output("vol-skew-btn", "style"),
-    Output("vol-gvz-btn", "style"),
-    Output("vol-ovx-btn", "style"),
-    Output("vol-stlfsi-btn", "style"),
-    Output("vol-hy_oas-btn", "style"),
-    Output("vol-move-btn", "style"),
-    Output("vol-dxy-btn", "style"),
-    Output("vol-cnn_fear_greed-btn", "style"),
-    Input("vol-vix-btn", "n_clicks"),
-    Input("vol-vxn-btn", "n_clicks"),
-    Input("vol-rvx-btn", "n_clicks"),
-    Input("vol-vxeem-btn", "n_clicks"),
-    Input("vol-skew-btn", "n_clicks"),
-    Input("vol-gvz-btn", "n_clicks"),
-    Input("vol-ovx-btn", "n_clicks"),
-    Input("vol-stlfsi-btn", "n_clicks"),
-    Input("vol-hy_oas-btn", "n_clicks"),
-    Input("vol-move-btn", "n_clicks"),
-    Input("vol-dxy-btn", "n_clicks"),
-    Input("vol-cnn_fear_greed-btn", "n_clicks"),
-    State("show-vol-vix-state", "data"),
-    State("show-vol-vxn-state", "data"),
-    State("show-vol-rvx-state", "data"),
-    State("show-vol-vxeem-state", "data"),
-    State("show-vol-skew-state", "data"),
-    State("show-vol-gvz-state", "data"),
-    State("show-vol-ovx-state", "data"),
-    State("show-vol-stlfsi-state", "data"),
-    State("show-vol-hy_oas-state", "data"),
-    State("show-vol-move-state", "data"),
-    State("show-vol-dxy-state", "data"),
-    State("show-vol-cnn_fear_greed-state", "data"),
+    *[Output(state_id, "data") for state_id in VOLATILITY_BUTTON_STATE_IDS],
+    *[Output(button_id, "className") for button_id in VOLATILITY_BUTTON_IDS],
+    *[Output(button_id, "style") for button_id in VOLATILITY_BUTTON_IDS],
+    *[Input(button_id, "n_clicks") for button_id in VOLATILITY_BUTTON_IDS],
+    *[State(state_id, "data") for state_id in VOLATILITY_BUTTON_STATE_IDS],
     prevent_initial_call=True,
 )
-def toggle_volatility_buttons(
-    _vix_clicks: int,
-    _vxn_clicks: int,
-    _rvx_clicks: int,
-    _vxeem_clicks: int,
-    _skew_clicks: int,
-    _gvz_clicks: int,
-    _ovx_clicks: int,
-    _stlfsi_clicks: int,
-    _hy_oas_clicks: int,
-    _move_clicks: int,
-    _dxy_clicks: int,
-    _cnn_fear_greed_clicks: int,
-    show_vol_vix_state: bool,
-    show_vol_vxn_state: bool,
-    show_vol_rvx_state: bool,
-    show_vol_vxeem_state: bool,
-    show_vol_skew_state: bool,
-    show_vol_gvz_state: bool,
-    show_vol_ovx_state: bool,
-    show_vol_stlfsi_state: bool,
-    show_vol_hy_oas_state: bool,
-    show_vol_move_state: bool,
-    show_vol_dxy_state: bool,
-    show_vol_cnn_fear_greed_state: bool,
-):
-    key_order = ["vix", "vxn", "rvx", "vxeem", "skew", "gvz", "ovx", "stlfsi", "hy_oas", "move", "dxy", "cnn_fear_greed"]
-    id_to_key = {f"vol-{k}-btn": k for k in key_order}
-    current = {
-        "vix": bool(show_vol_vix_state),
-        "vxn": bool(show_vol_vxn_state),
-        "rvx": bool(show_vol_rvx_state),
-        "vxeem": bool(show_vol_vxeem_state),
-        "skew": bool(show_vol_skew_state),
-        "gvz": bool(show_vol_gvz_state),
-        "ovx": bool(show_vol_ovx_state),
-        "stlfsi": bool(show_vol_stlfsi_state),
-        "hy_oas": bool(show_vol_hy_oas_state),
-        "move": bool(show_vol_move_state),
-        "dxy": bool(show_vol_dxy_state),
-        "cnn_fear_greed": bool(show_vol_cnn_fear_greed_state),
-    }
+def toggle_volatility_buttons(*args):
+    n_clicks_count = len(VOLATILITY_BUTTON_IDS)
+    if len(args) != n_clicks_count * 2:
+        return no_update
+
+    prev_values = args[n_clicks_count:]
+    current = dict(zip(VOLATILITY_BUTTON_ORDER, map(bool, prev_values)))
 
     trigger = callback_context.triggered_id
-    clicked_key = id_to_key.get(str(trigger), "")
+    clicked_key = _VOLATILITY_KEY_INDEX.get(str(trigger), "")
     if not clicked_key:
         return no_update
 
@@ -3289,27 +3025,15 @@ def toggle_volatility_buttons(
     else:
         active_key = clicked_key
 
-    new_states = {k: (k == active_key) for k in key_order}
+    new_states = {k: (k == active_key) for k in VOLATILITY_BUTTON_ORDER}
 
     classes = []
     styles = []
-    for key in key_order:
+    for key in VOLATILITY_BUTTON_ORDER:
         is_active = new_states[key]
         classes.append("maturity-btn maturity-btn-active" if is_active else "maturity-btn")
-        if is_active:
-            color = VOLATILITY_BUTTON_COLORS[key]
-            styles.append(
-                {
-                    "background": "#fff",
-                    "backgroundColor": "#fff",
-                    "backgroundImage": "none",
-                    "borderColor": color,
-                    "borderWidth": "2px",
-                    "color": color,
-                }
-            )
-        else:
-            styles.append({})
+        color = VOLATILITY_BUTTON_COLORS.get(key, "#64748B")
+        styles.append(_build_button_style(is_active, color))
 
     state_values = [new_states[k] for k in key_order]
     return tuple(state_values + classes + styles)
