@@ -108,7 +108,7 @@ VOLATILITY_HOVER_LABELS = {
     "ig_oas": "IG Corporate OAS",
     "dxy": "Measures the value of the USD relative to a basket of euro (57.6% weight), Japanese yen (13.6%), British pound (11.9%), Canadian dollar (9.1%), Swedish krona (4.2%), and Swiss franc (3.6%). It serves as a broad gauge of USD strength/weakness in global FX markets, often inversely correlated with equity/commodity assets",
     "cnn_fear_greed": "CNN Fear & Greed Proxy (0-100 composite)",
-    "move": "MOVE Index is the bond market’s analog to VIX: it’s a market-implied measure of expected volatility in U.S. Treasury yields over the next ~30 days. It’s built from a yield-curve-weighted basket of at-the-money, 1-month options tied to key points on the Treasury curve",
+    "move": "MOVE Index is the bond marketâ€™s analog to VIX: itâ€™s a market-implied measure of expected volatility in U.S. Treasury yields over the next ~30 days. Itâ€™s built from a yield-curve-weighted basket of at-the-money, 1-month options tied to key points on the Treasury curve",
 }
 VOLATILITY_BUTTON_LABELS = {
     "vix": "VIX (S&P 500)",
@@ -160,20 +160,16 @@ BOND_YIELD_BUTTONS = [
 TEY_BOND_KEYS = {"ig_muni", "hy_muni"}
 VOLATILITY_BUTTON_WITH_CURRENT_VALUES = set(VOLATILITY_BUTTON_ORDER)
 REFRESH_SCRIPTS = [
-    "download_scripts/download_fedrate.py",
-    "download_scripts/download_inflation.py",
+    "download_scripts/download_macroindicators.py",
     "download_scripts/download_treasury_data.py",
     "download_scripts/download_bond_yields.py",
     "download_scripts/download_volatility.py",
-    "download_scripts/download_unemployment.py",
 ]
 REFRESH_DATA_FILES = [
-    "data/fedrate.csv",
-    "data/inflation.csv",
+    "data/macroindicators.csv",
     "data/ust.csv",
     "data/bondyields.csv",
     "data/volatility.csv",
-    "data/unemployment.csv",
 ]
 
 refresh_lock = threading.Lock()
@@ -203,6 +199,34 @@ def load_and_process_csv(path: str, date_col: str = "date") -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame()
+
+
+def load_macro_dataset() -> pd.DataFrame:
+    df = load_and_process_csv("data/macroindicators.csv")
+    if not df.empty:
+        return df
+
+    # Backward-compatibility fallback if combined file is not yet present.
+    fed_df = load_and_process_csv("data/fedrate.csv")
+    infl_df = load_and_process_csv("data/inflation.csv")
+    unemp_df = load_and_process_csv("data/unemployment.csv")
+
+    if fed_df.empty and infl_df.empty and unemp_df.empty:
+        return pd.DataFrame()
+
+    frames = []
+    if not fed_df.empty:
+        frames.append(fed_df.set_index("DATE"))
+    if not infl_df.empty:
+        frames.append(infl_df.set_index("DATE"))
+    if not unemp_df.empty:
+        frames.append(unemp_df.set_index("DATE"))
+
+    if not frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(frames, axis=1, join="outer").sort_index().reset_index().rename(columns={"index": "DATE"})
+    return combined
 
 
 def align_to_month_end(df: pd.DataFrame) -> pd.DataFrame:
@@ -2300,13 +2324,22 @@ STATUS_DOT_COLOR_FNS = {
     Input("refresh-token", "data"),
 )
 def update_macro_current_values(_refresh_token):
-    fed_df = load_and_process_csv("data/fedrate.csv")
+    macro_df = load_macro_dataset()
+
+    fed_df = (
+        macro_df[["DATE", "FED_RATE", SOFR_COL]].copy()
+        if (not macro_df.empty and {"FED_RATE", SOFR_COL}.issubset(macro_df.columns))
+        else macro_df[["DATE", "FED_RATE"]].copy()
+        if (not macro_df.empty and "FED_RATE" in macro_df.columns)
+        else pd.DataFrame()
+    )
+    infl_df = macro_df[["DATE", "PCE_YoY"]] if not macro_df.empty and "PCE_YoY" in macro_df.columns else pd.DataFrame()
+    unrate_df = macro_df[["DATE", "UNRATE", "U6RATE", "NROU"]] if not macro_df.empty else pd.DataFrame()
+
     fed_value = _format_last_value(fed_df["FED_RATE"]) if (not fed_df.empty and "FED_RATE" in fed_df.columns) else "--"
 
-    infl_df = load_and_process_csv("data/inflation.csv")
     infl_value = _format_last_value(infl_df["PCE_YoY"]) if (not infl_df.empty and "PCE_YoY" in infl_df.columns) else "--"
 
-    unrate_df = load_and_process_csv("data/unemployment.csv")
     if not unrate_df.empty and "UNRATE" in unrate_df.columns:
         unrate_value = _format_last_value(unrate_df["UNRATE"])
     else:
@@ -3014,6 +3047,16 @@ def toggle_volatility_buttons(*args):
     current = dict(zip(VOLATILITY_BUTTON_ORDER, map(bool, prev_values)))
 
     trigger = callback_context.triggered_id
+    if trigger is None:
+        triggers = getattr(callback_context, "triggered", [])
+        if triggers:
+            first_trigger = triggers[0].get("prop_id", "")
+            trigger = first_trigger.split(".")[0] if isinstance(first_trigger, str) else None
+        else:
+            trigger = None
+    elif isinstance(trigger, dict):
+        trigger = trigger.get("id") if hasattr(trigger, "get") else None
+
     clicked_key = _VOLATILITY_KEY_INDEX.get(str(trigger), "")
     if not clicked_key:
         return no_update
@@ -3035,7 +3078,7 @@ def toggle_volatility_buttons(*args):
         color = VOLATILITY_BUTTON_COLORS.get(key, "#64748B")
         styles.append(_build_button_style(is_active, color))
 
-    state_values = [new_states[k] for k in key_order]
+    state_values = [new_states[k] for k in VOLATILITY_BUTTON_ORDER]
     return tuple(state_values + classes + styles)
 
 
@@ -3224,49 +3267,52 @@ def update_visuals(
     else:
         bond_yields_df = pd.DataFrame()
 
-    fed_df = load_and_process_csv("data/fedrate.csv")
-    if not fed_df.empty:
-        value_cols = []
-        if "FED_RATE" in fed_df.columns:
-            fed_df["FED_RATE"] = pd.to_numeric(fed_df["FED_RATE"], errors="coerce")
-            value_cols.append("FED_RATE")
-        if SOFR_COL in fed_df.columns:
-            fed_df[SOFR_COL] = pd.to_numeric(fed_df[SOFR_COL], errors="coerce")
-            value_cols.append(SOFR_COL)
-        if value_cols:
-            fed_monthly = (
-                fed_df[["DATE"] + value_cols]
-                .sort_values("DATE")
-                .drop_duplicates(subset=["DATE"], keep="last")
-                .reset_index(drop=True)
-            )
+    macro_df = load_macro_dataset()
+    if not macro_df.empty:
+        fed_df = macro_df[["DATE", "FED_RATE", SOFR_COL]].copy() if {"FED_RATE", SOFR_COL}.issubset(macro_df.columns) else macro_df[["DATE", "FED_RATE"]].copy() if "FED_RATE" in macro_df.columns else pd.DataFrame()
+        if not fed_df.empty:
+            if "FED_RATE" in fed_df.columns:
+                fed_df["FED_RATE"] = pd.to_numeric(fed_df["FED_RATE"], errors="coerce")
+            if SOFR_COL in fed_df.columns:
+                fed_df[SOFR_COL] = pd.to_numeric(fed_df[SOFR_COL], errors="coerce")
+            value_cols = [col for col in ["FED_RATE", SOFR_COL] if col in fed_df.columns]
+            if value_cols:
+                fed_monthly = (
+                    fed_df[["DATE"] + value_cols]
+                    .sort_values("DATE")
+                    .drop_duplicates(subset=["DATE"], keep="last")
+                    .reset_index(drop=True)
+                )
+            else:
+                fed_monthly = pd.DataFrame()
         else:
             fed_monthly = pd.DataFrame()
     else:
         fed_monthly = pd.DataFrame()
+        fed_df = pd.DataFrame()
 
-    infl_df = load_and_process_csv("data/inflation.csv")
-    if not infl_df.empty:
+    if not macro_df.empty and "PCE_YoY" in macro_df.columns:
+        infl_df = macro_df[["DATE", "PCE_YoY"]].copy()
         infl_df["PCE_YoY"] = pd.to_numeric(infl_df["PCE_YoY"], errors="coerce")
-        infl_monthly = align_to_month_end(infl_df[["DATE", "PCE_YoY"]])
-        infl_monthly = align_to_treasury_daily_calendar(infl_monthly, ["PCE_YoY"], treasury_dates)
+        infl_monthly = align_to_treasury_daily_calendar(infl_df[["DATE", "PCE_YoY"]], ["PCE_YoY"], treasury_dates)
     else:
+        infl_df = pd.DataFrame()
         infl_monthly = pd.DataFrame()
 
-    unrate_df = load_and_process_csv("data/unemployment.csv")
-    if not unrate_df.empty:
+    if not macro_df.empty and {"UNRATE", "NROU"}.issubset(macro_df.columns):
+        unrate_df = macro_df[["DATE", "UNRATE", "U6RATE", "NROU"]].copy()
         if "U6RATE" not in unrate_df.columns:
             unrate_df["U6RATE"] = pd.NA
         for col in ["UNRATE", "U6RATE", "NROU"]:
             unrate_df[col] = pd.to_numeric(unrate_df[col], errors="coerce")
         unrate_df["UNEMP_INDICATOR"] = unrate_df["UNRATE"] - unrate_df["NROU"]
-        unrate_monthly = align_to_month_end(unrate_df[["DATE", "UNRATE", "U6RATE", "UNEMP_INDICATOR"]])
         unrate_monthly = align_to_treasury_daily_calendar(
-            unrate_monthly,
+            unrate_df[["DATE", "UNRATE", "U6RATE", "UNEMP_INDICATOR"]],
             ["UNRATE", "U6RATE", "UNEMP_INDICATOR"],
             treasury_dates,
         )
     else:
+        unrate_df = pd.DataFrame()
         unrate_monthly = pd.DataFrame()
     vol_df = load_and_process_csv("data/volatility.csv")
     if not vol_df.empty:

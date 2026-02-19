@@ -265,7 +265,7 @@ def build_cnn_fear_greed_proxy(base_df: pd.DataFrame, helper_px: pd.DataFrame) -
         "risk_appetite": 1 / 7,
     }
 
-    comp_df = pd.concat(components.values(), axis=1)
+    comp_df = pd.concat(components.values(), axis=1, sort=False)
     comp_df.columns = list(components.keys())
     weight_s = pd.Series(weights, dtype="float64")
     weight_s = weight_s.reindex(comp_df.columns).fillna(0.0)
@@ -313,7 +313,7 @@ def build_indicator_dataset(start: str = START_DATE,
     ofr = fetch_ofr_fsi_stub()
 
     # 4) Merge + feature engineering
-    df = pd.concat([fred, yf_idx, ofr], axis=1)
+    df = pd.concat([fred, yf_idx, ofr], axis=1, sort=False)
     df.index = pd.to_datetime(df.index)
     df = df.sort_index()
 
