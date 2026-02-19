@@ -32,7 +32,7 @@ def load_existing() -> pd.DataFrame:
 
 
 def fetch_fred_series(
-    fred_client: Fred, series_id: str, start_date: str, end_date: str
+    fred_client: Fred, series_id: str, out_col: str, start_date: str, end_date: str
 ) -> pd.DataFrame:
     series = fred_client.get_series(
         series_id,
@@ -40,8 +40,8 @@ def fetch_fred_series(
         observation_end=end_date,
     )
     if series is None or series.empty:
-        return pd.DataFrame(columns=["observation_date", "FED_RATE"])
-    df = series.rename("FED_RATE").to_frame()
+        return pd.DataFrame(columns=["observation_date", out_col])
+    df = series.rename(out_col).to_frame()
     df.index.name = "observation_date"
     return df.reset_index()
 
@@ -54,15 +54,19 @@ def download_fed_rate_data() -> pd.DataFrame | None:
     try:
         fred_client = Fred(api_key=get_fred_api_key())
 
-        df_old = fetch_fred_series(fred_client, "DFEDTAR", fetch_start, fetch_end).set_index("observation_date")
+        df_old = fetch_fred_series(fred_client, "DFEDTAR", "FED_RATE", fetch_start, fetch_end).set_index("observation_date")
         df_old = df_old[df_old.index < TARGET_SERIES_CUTOFF]
 
-        df_new = fetch_fred_series(fred_client, "DFEDTARU", fetch_start, fetch_end).set_index("observation_date")
+        df_new = fetch_fred_series(fred_client, "DFEDTARU", "FED_RATE", fetch_start, fetch_end).set_index("observation_date")
         df_new = df_new[df_new.index >= TARGET_SERIES_CUTOFF]
 
         combined = pd.concat([df_old, df_new]).sort_index()
         if combined.empty:
             return None
+
+        sofr = fetch_fred_series(fred_client, "SOFR30DAYAVG", "SOFR", fetch_start, fetch_end).set_index("observation_date")
+        if not sofr.empty:
+            combined = combined.join(sofr[["SOFR"]], how="outer")
 
         combined = combined.resample("D").ffill()
         monthly = combined.resample("ME").last().reset_index()

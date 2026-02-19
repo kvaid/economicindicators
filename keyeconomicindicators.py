@@ -3,6 +3,7 @@ import sys
 import threading
 import os
 from pathlib import Path
+from datetime import datetime
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -20,11 +21,13 @@ SERIES = {
     "20Y": "BC_20YEAR",
     "30Y": "BC_30YEAR",
 }
+SOFR_COL = "SOFR"
 MATURITY_PRESETS = list(SERIES.keys())
 CS_BASELINE_PRESETS = ["1Y", "2Y", "5Y", "10Y", "30Y"]
 
 PRESETS = ["YTD", "1W", "1M", "3M", "6M", "1Y", "5Y", "10Y", "15Y", "20Y"]
 YIELD_COLORS = {
+    "SOFR": "#1B8F3A",
     "1Y": "#B7D7F5",
     "2Y": "#8EBFEA",
     "5Y": "#5B9EDB",
@@ -130,6 +133,14 @@ REFRESH_SCRIPTS = [
     "download_scripts/download_volatility.py",
     "download_scripts/download_unemployment.py",
 ]
+REFRESH_DATA_FILES = [
+    "data/fedrate.csv",
+    "data/inflation.csv",
+    "data/ust.csv",
+    "data/bondyields.csv",
+    "data/volatility.csv",
+    "data/unemployment.csv",
+]
 
 refresh_lock = threading.Lock()
 refresh_state = {
@@ -139,6 +150,10 @@ refresh_state = {
     "message": "",
     "progress": 0,
 }
+AUTO_REFRESH_HOURS = {8, 14}
+AUTO_REFRESH_WINDOW_MINUTES = 10
+auto_refresh_lock = threading.Lock()
+auto_refresh_last_slot = ""
 chart_dataset_lock = threading.Lock()
 chart_dataset_cache = {"csv": "date\n"}
 
@@ -236,6 +251,29 @@ def start_refresh_worker() -> bool:
     return True
 
 
+def maybe_start_scheduled_refresh() -> bool:
+    global auto_refresh_last_slot
+
+    now = datetime.now()
+    if now.hour not in AUTO_REFRESH_HOURS:
+        return False
+    if now.minute >= AUTO_REFRESH_WINDOW_MINUTES:
+        return False
+
+    slot = now.strftime("%Y-%m-%d %H")
+    with auto_refresh_lock:
+        if auto_refresh_last_slot == slot:
+            return False
+        started = start_refresh_worker()
+        if started:
+            auto_refresh_last_slot = slot
+            return True
+        with refresh_lock:
+            if refresh_state["running"]:
+                auto_refresh_last_slot = slot
+        return started
+
+
 def run_startup_refresh() -> None:
     for script in REFRESH_SCRIPTS:
         try:
@@ -249,6 +287,21 @@ def run_startup_refresh() -> None:
             err_lines = (exc.stderr or exc.stdout or str(exc)).strip().splitlines()
             summary = err_lines[-1] if err_lines else str(exc)
             print(f"[startup refresh] Error in {script}: {summary}", file=sys.stderr)
+
+
+def get_last_refresh_label() -> str:
+    latest_mtime = None
+    for rel_path in REFRESH_DATA_FILES:
+        path = BASE_DIR / rel_path
+        if not path.exists():
+            continue
+        mtime = path.stat().st_mtime
+        if latest_mtime is None or mtime > latest_mtime:
+            latest_mtime = mtime
+    if latest_mtime is None:
+        return "Last: --/-- --:--"
+    dt = datetime.fromtimestamp(latest_mtime)
+    return f"Last: {dt.strftime('%m/%d %H:%M')}"
 
 
 if __name__ == "__main__" and os.environ.get("WERKZEUG_RUN_MAIN") == "true":
@@ -326,6 +379,7 @@ def build_figure(
     selected_maturities: list[str],
     show_yields: bool,
     show_spread: bool,
+    show_sofr: bool,
     show_yield_curve: bool,
     show_us_ig_corp: bool,
     show_aaa_corp: bool,
@@ -368,6 +422,8 @@ def build_figure(
             y1_vals.extend(plot_ust[SERIES[maturity]].dropna().tolist())
     if show_spread and not plot_ust.empty:
         y1_vals.extend(plot_ust["SPREAD_10Y_2Y"].dropna().tolist())
+    if show_sofr and not plot_fed.empty and SOFR_COL in plot_fed.columns:
+        y1_vals.extend(pd.to_numeric(plot_fed[SOFR_COL], errors="coerce").dropna().tolist())
     if (
         show_us_ig_corp
         and not plot_bond_yields.empty
@@ -633,6 +689,16 @@ def build_figure(
                 y=plot_ust["SPREAD_10Y_2Y"],
                 name="10Y-2Y Treasury Yield Spread",
                 line={"color": "#0B3A63", "width": 2, "dash": "dot"},
+                hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
+            )
+        )
+    if show_sofr and not plot_fed.empty and SOFR_COL in plot_fed.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=plot_fed["DATE"],
+                y=plot_fed[SOFR_COL],
+                name="SOFR 30D Avg",
+                line={"color": "#1B8F3A", "width": 2},
                 hovertemplate="%{fullData.name}<br>%{x|%b %d, %Y}<br>%{y:.2f}%<extra></extra>",
             )
         )
@@ -1763,6 +1829,7 @@ app.layout = html.Div(
         dcc.Store(id="show-vol-dxy-state", data=False),
         dcc.Store(id="show-vol-cnn_fear_greed-state", data=False),
         dcc.Interval(id="refresh-progress-interval", interval=600, n_intervals=0, disabled=True),
+        dcc.Interval(id="auto-refresh-interval", interval=60_000, n_intervals=0, disabled=False),
         html.Div(
             [
                 html.H1("Key Economic Indicators", className="page-title"),
@@ -1811,7 +1878,15 @@ app.layout = html.Div(
                             ],
                             className="chart-panel-timeline",
                         ),
-                        html.Button("Refresh Data", id="refresh-btn", n_clicks=0, className="primary-btn chart-action-btn"),
+                        html.Button(
+                            [
+                                html.Span("Refresh Data", className="refresh-btn-main"),
+                                html.Span("Last: --/-- --:--", id="refresh-last-line", className="refresh-btn-sub"),
+                            ],
+                            id="refresh-btn",
+                            n_clicks=0,
+                            className="primary-btn chart-action-btn",
+                        ),
                         html.A(
                             "Download Chart",
                             id="download-dataset-btn",
@@ -1847,6 +1922,18 @@ app.layout = html.Div(
                                                     className="macro-checklist-inner",
                                                 ),
                                                 html.Div(id="fed-rate-current-value", className="macro-option-subvalue"),
+                                            ],
+                                            className="control-group macro-metric-group",
+                                        ),
+                                        html.Div(
+                                            [
+                                                dcc.Checklist(
+                                                    id="show-sofr",
+                                                    options=[{"label": "SOFR 30D Avg", "value": "on"}],
+                                                    value=[],
+                                                    className="macro-checklist-inner",
+                                                ),
+                                                html.Div(id="sofr-current-value", className="macro-option-subvalue"),
                                             ],
                                             className="control-group macro-metric-group",
                                         ),
@@ -2331,6 +2418,7 @@ STATUS_DOT_COLOR_FNS = {
     Output("unemployment-current-value", "children"),
     Output("u6-unemployment-current-value", "children"),
     Output("unemp-ind-current-value", "children"),
+    Output("sofr-current-value", "children"),
     Input("refresh-token", "data"),
 )
 def update_macro_current_values(_refresh_token):
@@ -2363,7 +2451,9 @@ def update_macro_current_values(_refresh_token):
     else:
         unemp_ind_value = "--"
 
-    return fed_value, infl_value, unrate_value, u6_value, unemp_ind_value
+    sofr_value = _format(fed_df[SOFR_COL]) if (not fed_df.empty and SOFR_COL in fed_df.columns) else "--"
+
+    return fed_value, infl_value, unrate_value, u6_value, unemp_ind_value, sofr_value
 
 
 @app.callback(
@@ -2470,6 +2560,14 @@ def update_volatility_button_current_values(_refresh_token):
         s = pd.to_numeric(vol_df[key], errors="coerce").dropna()
         out.append(f"{float(s.iloc[-1]):.2f}" if not s.empty else "--")
     return tuple(out)
+
+
+@app.callback(
+    Output("refresh-last-line", "children"),
+    Input("refresh-token", "data"),
+)
+def update_refresh_last_line(_refresh_token):
+    return get_last_refresh_label()
 
 
 @app.callback(
@@ -3226,10 +3324,11 @@ def toggle_volatility_buttons(
     Output("dataset-range-label", "children"),
     Input("refresh-btn", "n_clicks"),
     Input("refresh-progress-interval", "n_intervals"),
+    Input("auto-refresh-interval", "n_intervals"),
     State("refresh-token", "data"),
     prevent_initial_call=True,
 )
-def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
+def handle_refresh(n_clicks: int, _n_intervals: int, _auto_n_intervals: int, token: int):
     trigger = callback_context.triggered_id
 
     if trigger == "refresh-btn":
@@ -3239,6 +3338,8 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
         if not started:
             return "Refresh already running...", no_update, {"display": "block"}, False, no_update, no_update
         return "Starting refresh...", "0", {"display": "block"}, False, no_update, no_update
+    if trigger == "auto-refresh-interval":
+        maybe_start_scheduled_refresh()
 
     with refresh_lock:
         state = dict(refresh_state)
@@ -3289,6 +3390,7 @@ def handle_refresh(n_clicks: int, _n_intervals: int, token: int):
     Input("show-vol-cnn_fear_greed-state", "data"),
     Input("vol-band-select", "value"),
     Input("vol-median-select", "value"),
+    Input("show-sofr", "value"),
     Input("show-fed-rate", "value"),
     Input("show-inflation", "value"),
     Input("show-unemployment", "value"),
@@ -3329,6 +3431,7 @@ def update_visuals(
     show_vol_cnn_fear_greed_state,
     vol_band_mode,
     vol_median_mode,
+    show_sofr_val,
     show_fed_rate_val,
     show_inflation_val,
     show_unemployment_val,
@@ -3340,6 +3443,7 @@ def update_visuals(
 ):
     show_yields = True
     show_spread = bool(show_spread_state)
+    show_sofr = "on" in (show_sofr_val or [])
     show_yield_curve = bool(show_yield_curve_state)
     show_us_ig_corp = bool(show_us_ig_corp_state)
     show_aaa_corp = bool(show_aaa_corp_state)
@@ -3398,9 +3502,18 @@ def update_visuals(
 
     fed_df = load_and_process_csv("data/fedrate.csv")
     if not fed_df.empty:
-        fed_df["FED_RATE"] = pd.to_numeric(fed_df["FED_RATE"], errors="coerce")
-        fed_monthly = align_to_month_end(fed_df[["DATE", "FED_RATE"]])
-        fed_monthly = align_to_treasury_daily_calendar(fed_monthly, ["FED_RATE"], treasury_dates)
+        value_cols = []
+        if "FED_RATE" in fed_df.columns:
+            fed_df["FED_RATE"] = pd.to_numeric(fed_df["FED_RATE"], errors="coerce")
+            value_cols.append("FED_RATE")
+        if SOFR_COL in fed_df.columns:
+            fed_df[SOFR_COL] = pd.to_numeric(fed_df[SOFR_COL], errors="coerce")
+            value_cols.append(SOFR_COL)
+        if value_cols:
+            fed_monthly = align_to_month_end(fed_df[["DATE"] + value_cols])
+            fed_monthly = align_to_treasury_daily_calendar(fed_monthly, value_cols, treasury_dates)
+        else:
+            fed_monthly = pd.DataFrame()
     else:
         fed_monthly = pd.DataFrame()
 
@@ -3542,6 +3655,7 @@ def update_visuals(
         selected_maturities=selected_maturities,
         show_yields=show_yields,
         show_spread=show_spread,
+        show_sofr=show_sofr,
         show_yield_curve=show_yield_curve,
         show_us_ig_corp=show_us_ig_corp,
         show_aaa_corp=show_aaa_corp,
@@ -3654,6 +3768,10 @@ def update_visuals(
         s_df = filter_by_date(ust_df[["DATE", "BC_10YEAR", "BC_2YEAR"]], start_date, end_date).copy()
         spread_vals = pd.to_numeric(s_df["BC_10YEAR"], errors="coerce") - pd.to_numeric(s_df["BC_2YEAR"], errors="coerce")
         export_series.append(("10Y-2Y Spread", pd.Series(spread_vals.values, index=s_df["DATE"])))
+    if show_sofr and SOFR_COL in fed_df.columns:
+        s_df = filter_by_date(fed_df[["DATE", SOFR_COL]], start_date, end_date)
+        sofr_vals = pd.to_numeric(s_df[SOFR_COL], errors="coerce")
+        export_series.append(("SOFR 30D Avg", pd.Series(sofr_vals.values, index=s_df["DATE"])))
 
     bond_flags = [
         ("us_ig_corp", show_us_ig_corp, "IG CORP"),
