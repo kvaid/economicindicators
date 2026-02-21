@@ -244,6 +244,36 @@ def main() -> None:
     except Exception as exc:
         errors.append({"section": "unemployment", "error": str(exc)})
 
+    # Preserve previously downloaded sections when one section refresh fails.
+    # This prevents partial refreshes from wiping out existing series columns.
+    if fed_df is None and not existing.empty and {"date", "FED_RATE"}.issubset(existing.columns):
+        fed_cols = [col for col in ["date", "FED_RATE", "SOFR"] if col in existing.columns]
+        fed_df = (
+            existing[fed_cols]
+            .drop_duplicates(subset=["date"], keep="last")
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+        print("Reusing existing Fed/SOFR data because fedrate refresh failed.")
+
+    if infl_df is None and not existing.empty and {"date", "PCE", "PCE_YoY"}.issubset(existing.columns):
+        infl_df = (
+            existing[["date", "PCE", "PCE_YoY"]]
+            .drop_duplicates(subset=["date"], keep="last")
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+        print("Reusing existing inflation data because inflation refresh failed.")
+
+    if unemp_df is None and not existing.empty and {"date", "UNRATE", "U6RATE", "NROU"}.issubset(existing.columns):
+        unemp_df = (
+            existing[["date", "UNRATE", "U6RATE", "NROU"]]
+            .drop_duplicates(subset=["date"], keep="last")
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+        print("Reusing existing unemployment data because unemployment refresh failed.")
+
     if fed_df is None and infl_df is None and unemp_df is None:
         raise RuntimeError("No macro indicator data was downloaded.")
 
